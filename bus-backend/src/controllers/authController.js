@@ -7,45 +7,59 @@ exports.register = async (req, res) => {
   try {
     const { name, phone, email, password } = req.body;
 
-    // validation
-    if (!name || !phone || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email and password are required" });
     }
 
-    // check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "Email already registered. Please login." });
     }
 
-    // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // create user
     const user = await User.create({
       name,
-      phone,
+      phone: phone || "",
       email,
       password: hashedPassword,
       role: email === "admin@busseva.com" ? "admin" : "user",
     });
 
+    // Generate token so frontend can auto-login after register
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET || "secretkey",
+      { expiresIn: "1d" }
+    );
+
     res.status(201).json({
-      message: "User registered successfully",
+      message: "Registration successful!",
+      token,
       user: {
-        id: user._id,
-        name: user.name,
+        id:    user._id,
+        name:  user.name,
         email: user.email,
-        role: user.role,
+        role:  user.role,
       },
     });
 
   } catch (error) {
-    console.log("REGISTER ERROR:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("REGISTER ERROR:", error);
+    res.status(500).json({ message: "Server error. Please try again." });
   }
 };
 
+
+// GET ALL USERS (Admin)
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({}, { password: 0 }).sort({ _id: -1 });
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // LOGIN
 exports.login = async (req, res) => {
@@ -70,7 +84,7 @@ exports.login = async (req, res) => {
     // generate token
     const token = jwt.sign(
       { id: user._id, role: role },
-      "secretkey",
+      process.env.JWT_SECRET || "secretkey",
       { expiresIn: "1d" }
     );
 

@@ -1,220 +1,190 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { createSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  FaBus, 
+import React, { useState } from "react";
+import { FaMapMarkerAlt, FaSearch } from "react-icons/fa";
+import { MdSwapHoriz } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 
-  FaLocationDot, 
-
-  FaMagnifyingGlass,
-  FaArrowRightArrowLeft 
-} from "react-icons/fa6";
-import { useSearchContext } from '../../context/SearchContext';
-import { fetchMetaSummary } from '../../services/busService';
-
-const defaultCities = ['Pune', 'Solapur', 'Mumbai', 'Hyderabad', 'Bangalore', 'Goa', 'Delhi', 'Ahmedabad', 'Chennai', 'Kolhapur'];
+const cities = [
+  "Mumbai",
+  "Pune",
+  "Nashik",
+  "Nagpur",
+  "Kolhapur",
+  "Aurangabad",
+  "Solapur",
+  "Satara",
+  "Ahmednagar",
+  "Delhi",
+  "Bangalore",
+  "Hyderabad",
+  "Chennai",
+];
 
 const Search = () => {
-  const navigate = useNavigate();
-  const { criteria, updateCriteria } = useSearchContext();
-  const [formState, setFormState] = useState(criteria);
-  const [cities, setCities] = useState(defaultCities);
-  const [activeField, setActiveField] = useState(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [date, setDate] = useState("");
+  const [showFrom, setShowFrom] = useState(false);
+  const [showTo, setShowTo] = useState(false);
 
-  useEffect(() => {
-    setFormState(criteria);
-  }, [criteria]);
-
-  useEffect(() => {
-    fetchMetaSummary()
-      .then(summary => {
-        const topDest = summary?.topDestinations?.map(item => item._id).filter(Boolean) || [];
-        setCities(prev => Array.from(new Set([...prev, ...topDest])));
-      })
-      .catch(() => {
-        // keep defaults on failure
-      });
-  }, []);
-
-  const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
-  today.setDate(today.getDate() + 1);
-  const tomorrow = today.toISOString().split('T')[0];
-
-  const handleInputChange = event => {
-    const { name, value } = event.target;
-    setFormState(prev => ({ ...prev, [name]: value }));
+  // Filter cities
+  const filterCities = (value) => {
+    return cities.filter((city) =>
+      city.toLowerCase().includes(value.toLowerCase())
+    );
   };
 
+  // Swap function
   const handleSwap = () => {
-    setFormState(prev => ({
-      ...prev,
-      origin: prev.destination,
-      destination: prev.origin,
-    }));
+    setFrom(to);
+    setTo(from);
   };
 
-  const filteredCities = useMemo(() => {
-    const source = activeField ? formState[activeField] : '';
-    if (!source) return cities;
-    const lower = source.toLowerCase();
-    return cities.filter(city => city.toLowerCase().startsWith(lower));
-  }, [activeField, cities, formState]);
 
-  const handleSuggestionSelect = (field, city) => {
-    setFormState(prev => ({ ...prev, [field]: city }));
-    setActiveField(null);
-  };
+  const navigate = useNavigate();
 
-  const handleSubmit = event => {
-    event.preventDefault();
-    updateCriteria(formState);
+  
+const handleSearch = () => {
+  if (!from || !to) {
+    alert("Please enter both cities");
+    return;
+  }
 
-    navigate({
-      pathname: '/s-to-d',
-      search: createSearchParams({
-        origin: formState.origin,
-        destination: formState.destination,
-        date: formState.travelDate,
-      }).toString(),
-    });
-  };
+  const user = localStorage.getItem("user");
+
+  if (!user) {
+    navigate("/register");
+    return;
+  }
+
+  navigate(`/s-to-d?from=${from}&to=${to}&date=${date}`);
+};
+
 
   return (
-    <div className="relative z-30 w-full px-4 max-w-7xl mx-auto">
-      <form
-        onSubmit={handleSubmit}
-        className="relative z-30 bg-white/90 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] p-4 md:p-6 border border-white/50 overflow-visible"
-      >
-        
-        {/* TABS SECTION */}
-        <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-            <button className="flex items-center gap-2 px-6 py-2.5  text-black hover:bg-white rounded-md text-sm font-black whitespace-nowrap transition-all">
-              <FaBus /> BUSES
-            </button>
-      
-          </div>
-          <p className='hidden lg:block font-extrabold text-black text-xs tracking-widest uppercase'>
-            India's Fastest Booking Platform
-          </p>
+    <div className="w-full flex justify-center mt-10 px-4">
+      <div className="bg-gray-200 rounded-[30px] sm:rounded-[40px] px-4 sm:px-6 py-5 sm:py-6 w-full max-w-6xl shadow-md">
+
+        {/* Top Row */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-4">
+          <span>🚌 BUSES</span>
+          <span className="text-gray-700 text-xs sm:text-sm">
+            INDIA'S FASTEST BOOKING PLATFORM
+          </span>
         </div>
 
-        {/* INPUTS GRID */}
-        <div className="flex flex-col lg:grid lg:grid-cols-12 bg-slate-50 rounded-3xl lg:rounded-full p-2 border border-slate-200 gap-2 lg:gap-0">
-          
+        <div className="border-t border-gray-300 mb-4"></div>
+
+        {/* Search Row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-gray-100 rounded-2xl sm:rounded-full overflow-visible relative">
+
           {/* FROM */}
-          <div className="lg:col-span-3 flex items-center px-6 py-4 lg:py-3 gap-4 bg-white lg:bg-transparent rounded-2xl lg:rounded-none border-b lg:border-b-0 lg:border-r border-slate-400 relative">
-            <FaLocationDot className="text-orange-500 text-xl lg:text-lg" />
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase font-black text-slate-400">From</span>
+          <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
+            <FaMapMarkerAlt className="text-orange-500" />
+            <div className="w-full">
+              <p className="text-xs text-gray-500 font-semibold">FROM</p>
               <input
-                name="origin"
-                value={formState.origin}
-                onChange={handleInputChange}
-                onFocus={() => setActiveField('origin')}
-                onBlur={() => setTimeout(() => setActiveField(prev => (prev === 'origin' ? null : prev)), 120)}
                 type="text"
-                placeholder="Departure City"
-                className="bg-transparent font-bold text-slate-800 outline-none w-full text-base placeholder:text-slate-300"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.target.value);
+                  setShowFrom(true);
+                }}
+                onFocus={() => setShowFrom(true)}
+                placeholder="Enter city"
+                className="bg-transparent outline-none w-full font-semibold text-lg"
               />
-            </div>
-            {activeField === 'origin' && filteredCities.length > 0 && (
-              <ul className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-auto z-[120]">
-                {filteredCities.map(city => (
-                  <li key={`origin-${city}`}>
-                    <button
-                      type="button"
-                      onMouseDown={() => handleSuggestionSelect('origin', city)}
-                      className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-orange-50"
+
+              {/* Suggestions */}
+              {showFrom && from && (
+                <div className="absolute top-16 left-0 w-full bg-white shadow rounded z-10 max-h-40 overflow-y-auto">
+                  {filterCities(from).map((city, i) => (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        setFrom(city);
+                        setShowFrom(false);
+                      }}
+                      className="p-2 hover:bg-gray-200 cursor-pointer"
                     >
                       {city}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SWAP */}
+          <div className="hidden sm:flex items-center justify-center">
+            <button
+              onClick={handleSwap}
+              className="bg-white p-2 rounded-full shadow"
+            >
+              <MdSwapHoriz className="text-orange-500 text-xl" />
+            </button>
           </div>
 
           {/* TO */}
-          <div className="lg:col-span-3 flex items-center px-6 py-4 lg:py-3 gap-4 bg-white lg:bg-transparent rounded-2xl lg:rounded-none border-b lg:border-b-0 lg:border-r border-slate-400 relative">
-            <FaLocationDot className="text-orange-500 text-xl lg:text-lg" />
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] uppercase font-black text-slate-400">To</span>
+          <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
+            <FaMapMarkerAlt className="text-orange-500" />
+            <div className="w-full">
+              <p className="text-xs text-gray-500 font-semibold">TO</p>
               <input
-                name="destination"
-                value={formState.destination}
-                onChange={handleInputChange}
-                onFocus={() => setActiveField('destination')}
-                onBlur={() => setTimeout(() => setActiveField(prev => (prev === 'destination' ? null : prev)), 120)}
                 type="text"
-                placeholder="Arrival City"
-                className="bg-transparent font-bold text-slate-800 outline-none w-full text-base placeholder:text-slate-300"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.target.value);
+                  setShowTo(true);
+                }}
+                onFocus={() => setShowTo(true)}
+                placeholder="Enter city"
+                className="bg-transparent outline-none w-full font-semibold text-lg"
               />
-            </div>
-            <button
-              type="button"
-              aria-label="Swap cities"
-              onClick={handleSwap}
-              className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white border border-slate-200 rounded-full p-2 shadow-sm hover:bg-orange-50"
-            >
-              <FaArrowRightArrowLeft className="text-orange-600" />
-            </button>
-            {activeField === 'destination' && filteredCities.length > 0 && (
-              <ul className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-60 overflow-auto z-[120]">
-                {filteredCities.map(city => (
-                  <li key={`destination-${city}`}>
-                    <button
-                      type="button"
-                      onMouseDown={() => handleSuggestionSelect('destination', city)}
-                      className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-orange-50"
+
+              {/* Suggestions */}
+              {showTo && to && (
+                <div className="absolute top-16 left-0 w-full bg-white shadow rounded z-10 max-h-40 overflow-y-auto">
+                  {filterCities(to).map((city, i) => (
+                    <div
+                      key={i}
+                      onClick={() => {
+                        setTo(city);
+                        setShowTo(false);
+                      }}
+                      className="p-2 hover:bg-gray-200 cursor-pointer"
                     >
                       {city}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* DATE & DAY */}
-          <div className="lg:col-span-4 flex bg-white lg:bg-transparent rounded-2xl lg:rounded-none overflow-hidden divide-x divide-slate-100 lg:divide-slate-400">
-             <label className="flex-1 flex items-center gap-4 px-6 py-4 lg:py-3 group cursor-pointer hover:bg-slate-100/50 transition-all">
-               
-                <div className="flex flex-col w-full">
-                    <span className="text-[10px] uppercase font-black text-slate-400 block">Departure</span>
-                    
-                    <input
-                    
-                      type="date"
-                      name="travelDate"
-                      min={minDate}
-                      value={formState.travelDate}
-                      onChange={handleInputChange}
-                      className="bg-transparent font-bold text-slate-800 text-sm outline-none"
-                      
-                    />
-                </div>
-             </label>
-             <button
-               type="button"
-               className="flex-1 flex flex-col justify-center px-6 py-4 lg:py-3 cursor-pointer hover:bg-slate-100/50 transition-all"
-               onClick={() => setFormState(prev => ({ ...prev, travelDate: tomorrow }))}
-             >
-                <span className="text-[10px] uppercase font-black text-slate-400">Quick Select</span>
-                <span className="font-bold text-black text-sm">Tomorrow</span>
-             </button>
+          {/* DATE */}
+          <div className="px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
+            <p className="text-xs text-gray-500 font-semibold">DEPARTURE</p>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="bg-transparent outline-none font-semibold text-lg"
+            />
           </div>
 
           {/* SEARCH BUTTON */}
-          <div className="lg:col-span-2 mt-2 lg:mt-0 lg:p-1">
-            <button type="submit" className="w-full cursor-pointer py-5 lg:h-full bg-red-600 text-white font-black rounded-2xl lg:rounded-full flex items-center justify-center gap-3 transition-all ">
-              <FaMagnifyingGlass className="text-xl group-hover:scale-125 transition-transform" /> 
-              <span className="tracking-widest">SEARCH</span>
+          <div className="px-4 py-3 sm:py-0">
+            <button
+              onClick={handleSearch}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full flex items-center justify-center gap-2 font-bold text-lg"
+            >
+              <FaSearch />
+              SEARCH
             </button>
           </div>
 
         </div>
-      </form>
+      </div>
     </div>
   );
 };

@@ -1,31 +1,13 @@
 import React from "react";
-import useBookingNavigation from "../../hooks/useBookingNavigation";
+import { useNavigate } from "react-router-dom";
 
 const BusFleet = () => {
-  const goToBooking = useBookingNavigation();
+  const navigate = useNavigate();
 
   const fleet = [
-    {
-      name: "Executive Class",
-      img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
-      capacity: "45 Seats",
-      features: ["AC", "Reclining Seats", "WiFi", "USB Charging", "Entertainment"],
-      price: "Premium Pricing"
-    },
-    {
-      name: "Deluxe Coach",
-      img: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=800&q=80",
-      capacity: "52 Seats",
-      features: ["AC", "Comfortable Seats", "Reading Lights", "Storage Space"],
-      price: "Standard Pricing"
-    },
-    {
-      name: "Sleeper Bus",
-      img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
-      capacity: "40 Berths",
-      features: ["AC", "Sleeping Berths", "Blankets", "Privacy Curtains", "Charging Points"],
-      price: "Night Travel Special"
-    }
+    { name: "Executive Class", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80", capacity: "45 Seats", features: ["AC", "Reclining Seats", "WiFi", "USB Charging", "Entertainment"], price: "Premium Pricing" },
+    { name: "Deluxe Coach", img: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=800&q=80", capacity: "52 Seats", features: ["AC", "Comfortable Seats", "Reading Lights", "Storage Space"], price: "Standard Pricing" },
+    { name: "Sleeper Bus", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80", capacity: "40 Berths", features: ["AC", "Sleeping Berths", "Blankets", "Privacy Curtains", "Charging Points"], price: "Night Travel Special" },
   ];
 
   return (
@@ -43,26 +25,14 @@ const BusFleet = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {fleet.map((bus, index) => (
-            <div
-              key={index}
-              className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500"
-            >
-              {/* Image */}
+            <div key={index} className="group relative overflow-hidden rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500">
               <div className="relative h-80">
-                <img
-                  src={bus.img}
-                  alt={bus.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
+                <img src={bus.img} alt={bus.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
-                
-                {/* Content Overlay */}
                 <div className="absolute inset-0 flex flex-col justify-end p-6 text-white">
                   <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                     <h3 className="text-2xl font-bold mb-2">{bus.name}</h3>
                     <p className="text-orange-400 font-semibold mb-4">{bus.capacity}</p>
-                    
-                    {/* Features */}
                     <div className="space-y-2 mb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                       {bus.features.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-2">
@@ -73,12 +43,11 @@ const BusFleet = () => {
                         </div>
                       ))}
                     </div>
-
                     <div className="flex items-center justify-between">
                       <span className="text-white/80 text-sm">{bus.price}</span>
                       <button
                         type="button"
-                        onClick={() => goToBooking()}
+                        onClick={() => navigate("/")}
                         className="bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded-full text-sm font-bold transition-all transform hover:scale-105"
                       >
                         Book Now

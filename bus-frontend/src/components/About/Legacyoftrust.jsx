@@ -75,8 +75,10 @@ const Legacyoftrust = () => {
               <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-50">
                 <h3 className="text-2xl font-bold text-slate-900 mb-3">Our Heritage</h3>
                 <p className="text-slate-500 leading-relaxed text-sm md:text-base">
-           Lorem ipsum dolor sit, amet consectetur adipisicing elit. Officia cupiditate deserunt atque nihil alias, dicta labore voluptas, vel soluta minima sapiente id aperiam aliquid ipsum at ut nemo magni facere.
-                </p>
+Rajmudra Travels is inspired by the rich heritage and values of Maharashtra, symbolizing trust and pride.
+Rooted in the legacy of Chhatrapati Shivaji Maharaj, we stand for safety, discipline, and customer-first service.
+Our journey reflects a commitment to connecting people with comfort and reliability.
+We carry forward tradition while delivering modern, dependable travel experiences.                </p>
                 <div className="mt-6 flex items-center gap-2">
                   <div className="h-1 w-12 bg-orange-500 rounded-full" />
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Raj Mudra Standard</span>

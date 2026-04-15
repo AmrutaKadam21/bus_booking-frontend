@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import useBookingNavigation from "../../hooks/useBookingNavigation";
+import { useNavigate } from "react-router-dom";
 
 const ServiceCategories = () => {
   const [activeService, setActiveService] = useState(null);
-  const goToBooking = useBookingNavigation();
+  const navigate = useNavigate();
 
   const services = [
     {
@@ -149,7 +149,7 @@ const ServiceCategories = () => {
                   type="button"
                   onClick={() => {
                     setActiveService(null);
-                    goToBooking();
+                    navigate("/");
                   }}
                   className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl py-3 font-bold shadow-lg"
                 >

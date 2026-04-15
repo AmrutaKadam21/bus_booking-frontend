@@ -1,8 +1,8 @@
 import React from "react";
-import useBookingNavigation from "../../hooks/useBookingNavigation";
+import { useNavigate } from "react-router-dom";
 
 const ServiceHero = () => {
-  const goToBooking = useBookingNavigation();
+  const navigate = useNavigate();
 
   return (
     <div 
@@ -29,7 +29,7 @@ const ServiceHero = () => {
         <div className="mt-12 flex flex-wrap justify-center gap-4">
           <button
             type="button"
-            onClick={() => goToBooking()}
+            onClick={() => navigate("/")}
             className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full font-bold transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(249,115,22,0.5)]"
           >
             Book Now

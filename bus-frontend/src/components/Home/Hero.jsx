@@ -8,53 +8,29 @@ import Awards from './Awards'
 import Testimonalies from './Testimonalies'
 import ImageBackground from './ImageBackground'
 
-
-
-
-
-
-
 const Hero = (props) => {
   return (
 
-     <>
+    <>
+
+      <ImageBackground />
+
+      <WhyChooseUs />
+
+      <OurDetails />
+
+      {/*<ImageCard/> */}
+
+      <Aboutbuscompany />
 
 
+      <OurBrands />
 
-   
-       <ImageBackground/>
-    
-    <WhyChooseUs/>
+      <Awards />
 
-    <OurDetails/>
-
-     {/*<ImageCard/> */}  
-
-       <Aboutbuscompany/>
-
-       
-       <OurBrands/>
-
-       <Awards/>
-
-      < Testimonalies/>
-
-      
+      < Testimonalies />
 
 
-
-   
-
-  
-
-
-
-
-
-
-
-  
-    
     </>
   )
 }

@@ -16,7 +16,7 @@ export default function BusAdmin() {
   const fetchBuses = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:5000/api/bus");
+      const res = await axios.get("http://localhost:5000/api/buses");
       setBuses(res.data);
       setLoading(false);
     } catch (error) {
@@ -33,7 +33,7 @@ export default function BusAdmin() {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/bus/delete/${id}`);
+      await axios.delete(`http://localhost:5000/api/buses/delete/${id}`);
       alert("Bus cancelled successfully");
       fetchBuses();
     } catch (error) {
@@ -54,17 +54,17 @@ export default function BusAdmin() {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-orange-50 to-white min-h-screen">
+    <div className="p-6 bg-white min-h-screen">
       
       {/* HEADER */}
       <h2 className="text-3xl font-bold mb-6 text-orange-600">
         🚍 Bus Admin Panel
       </h2>
 
-      <div className="bg-white shadow-xl rounded-xl overflow-hidden">
+      <div className="bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.18)] transition-shadow rounded-xl overflow-x-auto">
         
         {/* TABLE */}
-        <table className="w-full">
+        <table className="w-full min-w-[500px]">
           
           {/* ORANGE HEADER */}
           <thead className="bg-orange-500 text-white">
@@ -88,7 +88,10 @@ export default function BusAdmin() {
                   {indexOfFirstBus + index + 1}
                 </td>
 
-                <td className="font-medium">{bus.busName}</td>
+                <td className="font-medium">
+                  {bus.busName || "-"}
+                  <div className="text-xs text-gray-400 font-normal">{bus.busNumber || ""}</div>
+                </td>
                 <td>{bus.from}</td>
                 <td>{bus.to}</td>
 
@@ -125,7 +128,7 @@ export default function BusAdmin() {
         </table>
 
         {/* PAGINATION CONTROLS */}
-        <div className="flex justify-center items-center gap-4 p-4 bg-orange-50">
+        <div className="flex flex-wrap justify-center items-center gap-4 p-4 bg-orange-50">
           
           <button
             onClick={() => setCurrentPage(currentPage - 1)}

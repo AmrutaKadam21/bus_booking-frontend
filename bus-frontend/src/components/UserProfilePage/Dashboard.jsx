@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { doLogout } from "../Layout/Header";
 import {
   FaBus,
   FaTimesCircle,
   FaTicketAlt,
   FaMapMarkerAlt,
   FaUserCircle,
+  FaBars,
+  FaTimes,
 } from "react-icons/fa";
 
 export default function Dashboard() {
@@ -44,18 +47,34 @@ export default function Dashboard() {
     },
   ];
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-orange-50 flex">
 
+      {/* MOBILE OVERLAY */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* LEFT PANEL */}
-<div
-  className="w-1/5 min-h-screen p-6 flex flex-col justify-between shadow-xl text-white"
-  style={{
-    background: "linear-gradient(180deg, #1f2937, #374151, #ea580c)"
-  }}
->
+      <div
+        className={`fixed md:static z-30 top-0 left-0 h-full w-64 md:w-1/5 min-h-screen p-6 flex flex-col justify-between shadow-xl text-white transition-transform duration-300
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+        style={{ background: "linear-gradient(180deg, #1f2937, #374151, #ea580c)" }}
+      >
         {/* USER INFO */}
         <div className="text-center">
+          <button
+            className="md:hidden absolute top-4 right-4 text-white"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <FaTimes />
+          </button>
+
           <FaUserCircle className="text-7xl text-orange-500 mx-auto mb-3" />
 
           <h2 className="text-2xl font-bold text-white">
@@ -65,25 +84,32 @@ export default function Dashboard() {
           <p className="text-white text-sm">
             {user?.email}
           </p>
-        
 
-        <button
-          onClick={() => {
-            localStorage.removeItem("user");
-            navigate("/login");
-          }}
-          className="mt-20 p-7 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition"
-        >
-          Logout
-        </button>
+          <button
+            onClick={() => doLogout(navigate)}
+            className="mt-20 p-7 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
       {/* RIGHT CONTENT */}
-      <div className="flex-1 p-8 space-y-8">
+      <div className="flex-1 min-w-0 p-4 sm:p-8 space-y-8">
+
+        {/* MOBILE TOPBAR */}
+        <div className="md:hidden flex items-center gap-3 mb-2">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-700 text-xl"
+          >
+            <FaBars />
+          </button>
+          <span className="font-semibold text-gray-700">My Profile</span>
+        </div>
 
         {/* HEADER */}
-        <div className="bg-white p-6 rounded-2xl shadow-md flex justify-between items-center">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md flex justify-between items-center">
 
           <div>
             <h1 className="text-3xl font-bold text-gray-800">

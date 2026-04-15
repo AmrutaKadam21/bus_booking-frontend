@@ -1,58 +1,24 @@
 import React from "react";
-import useBookingNavigation from "../../hooks/useBookingNavigation";
+import { useNavigate } from "react-router-dom";
 
 const PopularRoutes = () => {
-  const goToBooking = useBookingNavigation();
+  const navigate = useNavigate();
+
+  const goToBooking = ({ origin, destination } = {}) => {
+    if (origin && destination) {
+      navigate(`/s-to-d?from=${origin}&to=${destination}`);
+    } else {
+      navigate("/");
+    }
+  };
 
   const routes = [
-    {
-      from: "Mumbai",
-      to: "Pune",
-      duration: "3.5 hrs",
-      price: "₹450",
-      frequency: "Every 30 mins",
-      img: "https://images.unsplash.com/photo-1566552881560-0be862a7c445?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      from: "Delhi",
-      to: "Jaipur",
-      duration: "5 hrs",
-      price: "₹650",
-      frequency: "Every hour",
-      img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      from: "Bangalore",
-      to: "Mysore",
-      duration: "4 hrs",
-      price: "₹550",
-      frequency: "Every 45 mins",
-      img: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      from: "Chennai",
-      to: "Pondicherry",
-      duration: "3 hrs",
-      price: "₹400",
-      frequency: "Every hour",
-      img: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      from: "Kolkata",
-      to: "Darjeeling",
-      duration: "12 hrs",
-      price: "₹1,200",
-      frequency: "Daily departures",
-      img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80"
-    },
-    {
-      from: "Ahmedabad",
-      to: "Udaipur",
-      duration: "6 hrs",
-      price: "₹750",
-      frequency: "Twice daily",
-      img: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=800&q=80"
-    }
+    { from: "Mumbai", to: "Pune", duration: "3.5 hrs", price: "₹450", frequency: "Every 30 mins", img: "https://images.unsplash.com/photo-1566552881560-0be862a7c445?auto=format&fit=crop&w=800&q=80" },
+    { from: "Delhi", to: "Jaipur", duration: "5 hrs", price: "₹650", frequency: "Every hour", img: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=80" },
+    { from: "Bangalore", to: "Mysore", duration: "4 hrs", price: "₹550", frequency: "Every 45 mins", img: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=800&q=80" },
+    { from: "Chennai", to: "Pondicherry", duration: "3 hrs", price: "₹400", frequency: "Every hour", img: "https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?auto=format&fit=crop&w=800&q=80" },
+    { from: "Kolkata", to: "Darjeeling", duration: "12 hrs", price: "₹1,200", frequency: "Daily departures", img: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80" },
+    { from: "Ahmedabad", to: "Udaipur", duration: "6 hrs", price: "₹750", frequency: "Twice daily", img: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?auto=format&fit=crop&w=800&q=80" },
   ];
 
   return (
@@ -70,20 +36,10 @@ const PopularRoutes = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {routes.map((route, index) => (
-            <div
-              key={index}
-              className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden transition-all duration-500 transform hover:-translate-y-2"
-            >
-              {/* Background Image */}
+            <div key={index} className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl overflow-hidden transition-all duration-500 transform hover:-translate-y-2">
               <div className="relative h-48 overflow-hidden">
-                <img
-                  src={route.img}
-                  alt={`${route.from} to ${route.to}`}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
+                <img src={route.img} alt={`${route.from} to ${route.to}`} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-                
-                {/* Route Title */}
                 <div className="absolute bottom-4 left-4 right-4">
                   <div className="flex items-center justify-between text-white">
                     <span className="text-2xl font-bold">{route.from}</span>
@@ -95,9 +51,7 @@ const PopularRoutes = () => {
                 </div>
               </div>
 
-              {/* Content */}
               <div className="p-6">
-                {/* Info Grid */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Duration</p>
@@ -109,7 +63,6 @@ const PopularRoutes = () => {
                   </div>
                 </div>
 
-                {/* Frequency */}
                 <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
@@ -117,7 +70,6 @@ const PopularRoutes = () => {
                   <span>{route.frequency}</span>
                 </div>
 
-                {/* Book Button */}
                 <button
                   type="button"
                   onClick={() => goToBooking({ origin: route.from, destination: route.to })}
@@ -130,7 +82,6 @@ const PopularRoutes = () => {
           ))}
         </div>
 
-        {/* View All Routes Button */}
         <div className="text-center mt-12">
           <button
             type="button"

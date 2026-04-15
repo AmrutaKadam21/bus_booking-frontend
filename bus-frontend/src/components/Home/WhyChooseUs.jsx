@@ -1,89 +1,171 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 
-const WhyChooseUs = () => {
-  const cards = [
-    {
-      title: "Luxury Buses",
-      img: "https://plus.unsplash.com/premium_photo-1661963208071-9a65b048ebaf?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?auto=format&fit=crop&w=800&q=80",
-      desc: "Enjoy premium buses with spacious seating, comfort and modern amenities."
-    },
-    {
-      title: "Safe Journeys",
-      img: "https://i.pinimg.com/736x/4a/4d/07/4a4d076906de8283314a41d9c5977826.jpg?auto=format&fit=crop&w=800&q=80",
-      desc: "Professional drivers and strict safety standards for worry-free travel."
-    },
-    {
-      title: "Professional Staff",
-      img: "https://i.pinimg.com/736x/90/b9/f6/90b9f6ed6aa751f6a53db5c5e4e7e298.jpg?auto=format&fit=crop&w=800&q=80",
-      desc: "Well-trained staff ensuring smooth and friendly travel experiences."
-    },
-    {
-      title: "On-Time Service",
-      img: "https://plus.unsplash.com/premium_photo-1661963208071-9a65b048ebaf?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?auto=format&fit=crop&w=800&q=80",
-      desc: "Punctual departures and arrivals so you always reach on time."
-    }
-  ];
+const cards = [
+  {
+    title: "Luxury Buses",
+    tag: "Premium Fleet",
+    img: "https://plus.unsplash.com/premium_photo-1661963208071-9a65b048ebaf?q=80&w=1170&auto=format&fit=crop",
+    desc: "Spacious seating, AC, WiFi, and entertainment on every journey.",
+  },
+  {
+    title: "Safe Journeys",
+    tag: "Zero Compromise",
+    img: "https://i.pinimg.com/736x/4a/4d/07/4a4d076906de8283314a41d9c5977826.jpg",
+    desc: "Professional drivers and strict safety standards for worry-free travel.",
+  },
+  {
+    title: "Expert Staff",
+    tag: "Trained Crew",
+    img: "https://i.pinimg.com/736x/90/b9/f6/90b9f6ed6aa751f6a53db5c5e4e7e298.jpg",
+    desc: "Well-trained staff ensuring smooth and friendly travel experiences.",
+  },
+  {
+    title: "On-Time Service",
+    tag: "Punctual Always",
+    img: "https://plus.unsplash.com/premium_photo-1661963208071-9a65b048ebaf?q=80&w=1170&auto=format&fit=crop",
+    desc: "Punctual departures and arrivals so you always reach on time.",
+  },
+];
+
+const TiltCard = ({ card, index }) => {
+  const cardRef = useRef(null);
+  const imgRef  = useRef(null);
+
+  const onMouseMove = (e) => {
+    const el = cardRef.current;
+    if (!el) return;
+    const { left, top, width, height } = el.getBoundingClientRect();
+    const x = (e.clientX - left) / width  - 0.5;   // -0.5 → 0.5
+    const y = (e.clientY - top)  / height - 0.5;
+    el.style.transform = `perspective(900px) rotateY(${x * 14}deg) rotateX(${-y * 14}deg) scale(1.04)`;
+    // Inner image moves opposite direction for depth
+    if (imgRef.current) imgRef.current.style.transform = `scale(1.12) translate(${x * -12}px, ${y * -12}px)`;
+  };
+
+  const onMouseLeave = () => {
+    const el = cardRef.current;
+    if (el) el.style.transform = "perspective(900px) rotateY(0deg) rotateX(0deg) scale(1)";
+    if (imgRef.current) imgRef.current.style.transform = "scale(1) translate(0,0)";
+  };
 
   return (
-    <div className="bg-white/90 mt-6 mx-4 md:mx-10 lg:mx-16 p-6 md:p-10 rounded-md overflow-hidden">
+    <div
+      ref={cardRef}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      className="why-card group relative h-80 cursor-pointer will-change-transform"
+      style={{
+        transition: "transform 0.12s ease-out, box-shadow 0.3s ease",
+        animationDelay: `${index * 0.12}s`,
+      }}
+    >
+      <img
+        ref={imgRef}
+        src={card.img}
+        alt={card.title}
+        className="absolute inset-0 w-full h-full object-cover object-center will-change-transform"
+        style={{ transition: "transform 0.12s ease-out" }}
+      />
 
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0 transition-opacity duration-500"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(0,0,0,0) 25%, rgba(0,0,0,0.88) 100%)",
+        }}
+      />
 
-      <h1 className="font-extrabold  text-2xl md:text-3xl lg:text-4xl text-orange-500">
-        Why Choose Us?
-      </h1>
+      {/* Tag */}
+      <div className="absolute top-4 left-4 z-10">
+        <span
+          className="text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full"
+          style={{
+            background: "rgba(249,115,22,0.88)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          {card.tag}
+        </span>
+      </div>
 
-      <p className="text-black/60 max-w-3xl mt-2 text-sm md:text-base">
-        The Raj Mudra Travelers is committed to safe, comfortable and affordable
-        travel experiences with exceptional service quality.
-      </p>
-
-      <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {cards.map((card, index) => (
-          <div
-            key={index}
-            className="group relative h-87.5  overflow-hidden shadow-lg"
-          >
-         
-            <img
-              src={card.img}
-              alt={card.title}
-              className="absolute inset-0 w-full h-full object-cover object-top
-                         transition-transform duration-700 ease-out
-                         group-hover:scale-105"
-            />
-
-         
-            <div
-              className="absolute inset-0 bg-linear-to-b
-                         from-black/0 via-black/20 to-black/80
-                         translate-y-1/2 group-hover:translate-y-0
-                         transition-transform duration-700 ease-out"
-            />
-
-            {/* Content */}
-            <div
-              className="relative z-10 h-full flex flex-col justify-end items-center
-                         text-center px-4 pb-6
-                         translate-y-1/3 group-hover:translate-y-0
-                         transition-transform duration-700 ease-out"
-            >
-              <h2 className="text-white text-lg font-bold tracking-wide">
-                {card.title}
-              </h2>
-
-              <p
-                className="mt-3 text-white/90 text-sm italic
-                           opacity-0 translate-y-4
-                           group-hover:opacity-100 group-hover:translate-y-0
-                           transition-all duration-700 ease-out"
-              >
-                {card.desc}
-              </p>
-            </div>
-          </div>
-        ))}
+      {/* Content */}
+      <div className="absolute bottom-0 left-0 right-0 z-10 p-5 translate-y-2 group-hover:translate-y-0 transition-transform duration-400">
+        <h3 className="text-white font-black text-lg tracking-wide">{card.title}</h3>
+        <p className="text-white/80 text-sm mt-2 leading-snug opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-75">
+          {card.desc}
+        </p>
+        <div
+          className="mt-3 h-0.5 w-0 group-hover:w-full transition-all duration-500 delay-100 rounded-full"
+          style={{ background: "linear-gradient(90deg,#f97316,#fbbf24)" }}
+        />
       </div>
     </div>
+  );
+};
+
+const WhyChooseUs = () => {
+  const sectionRef = useRef(null);
+
+  // Scroll-reveal stagger
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.querySelectorAll(".why-card").forEach((card, i) => {
+              setTimeout(() => card.classList.add("revealed"), i * 120);
+            });
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="py-20 px-4 md:px-10 lg:px-16 bg-white overflow-hidden">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-4 reveal-up">
+        <div>
+          <span className="text-orange-500 font-black text-xs tracking-[0.25em] uppercase block mb-2">
+            ✦ Our Promise
+          </span>
+          <h2
+            className="font-black text-slate-900 leading-tight"
+            style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)" }}
+          >
+            Why Choose{" "}
+            <span
+              style={{
+                background: "linear-gradient(90deg,#f97316,#dc2626)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}
+            >
+              Raj Mudra?
+            </span>
+          </h2>
+          <p className="text-slate-500 mt-3 max-w-xl text-base leading-relaxed">
+            Committed to safe, comfortable, and affordable travel with exceptional service quality.
+          </p>
+        </div>
+      </div>
+
+      {/* Cards */}
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        style={{ perspective: "1200px" }}
+      >
+        {cards.map((card, i) => (
+          <TiltCard key={i} card={card} index={i} />
+        ))}
+      </div>
+    </section>
   );
 };
 

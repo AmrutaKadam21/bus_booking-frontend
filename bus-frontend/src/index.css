@@ -1,15 +1,249 @@
 @import "tailwindcss";
 
-/* Infinite horizontal scrolling track */
-.marquee-track {
-	display: inline-flex;
-	align-items: stretch;
-	white-space: nowrap;
-	will-change: transform;
-	animation: marquee var(--marquee-duration, 30s) linear infinite;
+/* ── Design Tokens ── */
+:root {
+  --orange: #f97316;
+  --orange-dark: #ea580c;
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-blur: blur(18px);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes marquee {
-	from { transform: translateX(0); }
-	to   { transform: translateX(-50%); }
+/* ── Marquee ── */
+.marquee-track {
+  display: inline-flex;
+  align-items: stretch;
+  white-space: nowrap;
+  will-change: transform;
+  animation: marquee var(--marquee-duration, 30s) linear infinite;
 }
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── Glassmorphism ── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+}
+.glass-dark {
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* ── Shimmer Text ── */
+.shimmer-text {
+  background: linear-gradient(90deg, var(--orange), #fbbf24, var(--orange));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* ── Hero Entrance Animations ── */
+.hero-title    { animation: fadeUp 0.9s var(--ease-smooth) both; }
+.hero-subtitle { animation: fadeUp 0.9s 0.2s var(--ease-smooth) both; }
+.hero-cta      { animation: fadeUp 0.9s 0.4s var(--ease-smooth) both; }
+.hero-search   { animation: fadeUp 0.9s 0.55s var(--ease-smooth) both; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(36px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Floating Badge ── */
+@keyframes floatBadge {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+/* ── Live Pulse ── */
+@keyframes livePulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.3); }
+}
+
+/* ── Scroll Mouse Indicator ── */
+.scroll-mouse {
+  width: 22px;
+  height: 36px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  position: relative;
+}
+.scroll-mouse::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+  animation: scrollDot 1.8s ease-in-out infinite;
+}
+@keyframes scrollDot {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(14px); }
+}
+
+/* ── Floating Particles ── */
+.parallax-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, 0.35);
+  pointer-events: none;
+  z-index: 5;
+  animation: particleFloat var(--dur, 5s) ease-in-out infinite;
+}
+@keyframes particleFloat {
+  0%, 100% { transform: translateY(0px) scale(1);   opacity: 0.5; }
+  50%       { transform: translateY(-18px) scale(1.2); opacity: 0.9; }
+}
+
+/* ── Why Choose Us Cards ── */
+.why-card {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+  /* Start hidden for scroll-reveal */
+  opacity: 0;
+  transform: translateY(48px);
+  transition: box-shadow 0.4s var(--ease-smooth);
+}
+.why-card.revealed {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.6s var(--ease-smooth),
+    transform 0.6s var(--ease-smooth),
+    box-shadow 0.4s var(--ease-smooth);
+}
+
+/* ── Stat Cards ── */
+.stat-card {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(white, white) padding-box,
+    linear-gradient(135deg, #f97316 0%, #fbbf24 100%) border-box;
+  border-radius: 24px;
+  transition:
+    transform 0.35s var(--ease-smooth),
+    box-shadow 0.35s var(--ease-smooth);
+  /* Start hidden */
+  opacity: 0;
+  transform: translateY(40px);
+}
+.stat-card.stat-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.6s var(--ease-smooth),
+    transform 0.6s var(--ease-smooth),
+    box-shadow 0.35s var(--ease-smooth);
+}
+.stat-card:hover {
+  transform: translateY(-10px) scale(1.02) !important;
+  box-shadow: 0 24px 48px -8px rgba(249, 115, 22, 0.28);
+}
+
+/* ── Reveal Up (generic) ── */
+.reveal-up {
+  opacity: 0;
+  transform: translateY(32px);
+  animation: fadeUp 0.8s 0.1s var(--ease-smooth) both;
+}
+
+/* ── Reveal Child (JS-driven) ── */
+.reveal-child {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.6s var(--ease-smooth),
+    transform 0.6s var(--ease-smooth);
+}
+.reveal-child.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Search Input ── */
+.search-input-field {
+  background: transparent;
+  outline: none;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1e293b;
+  width: 100%;
+}
+.search-input-field::placeholder { color: #94a3b8; }
+
+/* ── Booking: custom range thumb ── */
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.4);
+  border: 2px solid white;
+  transition: transform 0.15s ease;
+}
+input[type='range']::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type='range']::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 8px rgba(249,115,22,0.4);
+}
+
+/* ── Booking: seat hover glow ── */
+.seat-available:hover {
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.4);
+}
+.seat-selected {
+  box-shadow: 0 4px 12px rgba(249,115,22,0.35);
+}
+
+/* ── Modal bottom sheet on mobile ── */
+@media (max-width: 640px) {
+  .booking-modal-sheet {
+    border-radius: 24px 24px 0 0;
+    max-height: 95dvh;
+  }
+}
+
+/* ── Header dropdown animation ── */
+@keyframes fadeDropdown {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.animate-fadeDropdown {
+  animation: fadeDropdown 0.18s ease-out both;
+}
+
+/* ── Smooth scrollbar for modal ── */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #e2e8f0 transparent;
+}
+.overflow-y-auto::-webkit-scrollbar { width: 4px; }
+.overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+.overflow-y-auto::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+.overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
