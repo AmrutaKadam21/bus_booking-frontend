@@ -8,17 +8,17 @@ const Awards = () => {
       desc: "Awarded for exceptional service and customer satisfaction."
     },
     {
-      img: "https://i.pinimg.com/736x/4f/bd/37/4fbd37c8bb2c55dd9520e715f77b407f.jpg",
+      img: "https://i.pinimg.com/736x/30/49/2e/30492e959c344fbfc742e3a41de987df.jpg",
       title: "Safety Excellence",
       desc: "Recognized for maintaining the highest safety standards in the industry."
     },
     {
-      img: "https://i.pinimg.com/736x/4f/bd/37/4fbd37c8bb2c55dd9520e715f77b407f.jpg",
+      img: "https://homafy.com/wp-content/uploads/2023/04/gold-star-trophy.jpg",
       title: "Customer Choice",
       desc: "Voted #1 for premium comfort and reliable city-to-city services."
     },
     {
-      img: "https://i.pinimg.com/736x/4f/bd/37/4fbd37c8bb2c55dd9520e715f77b407f.jpg",
+      img: "https://m.media-amazon.com/images/I/51-CkdkcJnL.jpg",
       title: "Fleet Innovation",
       desc: "Leading the industry with modern, tech-equipped luxury vehicles."
     },
