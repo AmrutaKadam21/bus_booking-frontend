@@ -8,6 +8,12 @@ const authRoutes = require("./src/routes/authRoutes");
 const busRoutes = require("./src/routes/busRoutes");
 const bookingRoutes = require("./src/routes/bookingRoutes");
 
+import cors from "cors";
+
+app.use(cors({
+  origin: "*"
+}));
+
 const app = express();
 
 // Connect to database
