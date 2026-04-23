@@ -9,6 +9,7 @@ import { MdPayment, MdQrCodeScanner } from "react-icons/md";
 const BookingSteps = ({
   bookingStep, setBookingStep,
   busData, seats, selectedSeats, seatsLoading,
+  hasDecks, lowerDeck, upperDeck, activeDeck, setActiveDeck,
   passengerForm, handlePassengerChange,
   paymentMethod, setPaymentMethod,
   paymentDetails, handlePaymentDetailsChange, paymentErrors,
@@ -54,28 +55,88 @@ const BookingSteps = ({
             <div className="mb-6 flex justify-center">
               <div className="bg-gray-800 text-white px-6 py-2 rounded-lg text-sm font-semibold">✇ DRIVER</div>
             </div>
-            <div className="grid grid-cols-4 gap-3">
-              {seatsLoading ? (
-                <div className="col-span-4 flex items-center justify-center py-16">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#d84e55]"></div>
-                  <p className="ml-3 text-gray-500">Loading seat layout...</p>
+
+            {seatsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#d84e55]"></div>
+                <p className="ml-3 text-gray-500">Loading seat layout...</p>
+              </div>
+            ) : hasDecks ? (
+              <>
+                {/* Deck Tabs */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setActiveDeck("lower")}
+                    className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
+                      activeDeck === "lower" ? "bg-[#d84e55] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    🛏 Lower Berth ({lowerDeck.filter(s => s.status === "available").length} available)
+                  </button>
+                  <button
+                    onClick={() => setActiveDeck("upper")}
+                    className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
+                      activeDeck === "upper" ? "bg-[#d84e55] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    🪜 Upper Berth ({upperDeck.filter(s => s.status === "available").length} available)
+                  </button>
                 </div>
-              ) : seats.map((seat) => (
-                <button
-                  key={seat.id}
-                  onClick={() => handleSeatClick(seat)}
-                  disabled={seat.status === "booked"}
-                  className={`relative p-3 rounded-lg text-center font-semibold transition-all duration-200 ${getSeatStatusColor(seat)} ${seat.status !== "booked" && "cursor-pointer"}`}
-                >
-                  <div className="text-sm">{seat.seatNumber}</div>
-                  <div className="text-xs mt-1 opacity-75">{getSeatStatusText(seat)}</div>
-                  {seat.isHandicap && seat.status === "available" && (
-                    <FaWheelchair className="absolute top-1 right-1 text-xs" />
-                  )}
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 text-center text-xs text-gray-400">← Aisle → &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Window →</div>
+
+                {/* Deck label */}
+                <div className="text-center mb-3">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                    {activeDeck === "lower" ? "Lower Deck — Berths" : "Upper Deck — Berths"}
+                  </span>
+                </div>
+
+                {/* Sleeper grid: 2 columns (window | aisle) */}
+                <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
+                  {(activeDeck === "lower" ? lowerDeck : upperDeck).map((seat) => (
+                    <button
+                      key={seat.id}
+                      onClick={() => handleSeatClick(seat)}
+                      disabled={seat.status === "booked"}
+                      className={`relative p-4 rounded-xl text-center font-semibold transition-all duration-200 border-2 ${
+                        seat.status === "booked" ? "bg-red-100 border-red-300 cursor-not-allowed opacity-60" :
+                        seat.status === "selected" ? "bg-green-500 border-green-600 text-white shadow-lg scale-105" :
+                        seat.isHandicap ? "bg-blue-100 border-blue-300 hover:bg-blue-200" :
+                        "bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-400"
+                      }`}
+                    >
+                      <div className="text-base">{seat.seatNumber}</div>
+                      <div className="text-xs mt-1 opacity-70">{getSeatStatusText(seat)}</div>
+                      {seat.isHandicap && seat.status === "available" && <FaWheelchair className="absolute top-1 right-1 text-xs text-blue-500" />}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-center text-xs text-gray-400 mt-3">
+                  {activeDeck === "lower" ? "Lower berths — easier access" : "Upper berths — more privacy"}
+                </p>
+              </>
+            ) : (
+              <>
+                {/* Regular seater: 2+2 grid */}
+                <div className="grid grid-cols-4 gap-3">
+                  {seats.map((seat, idx) => (
+                    <React.Fragment key={seat.id}>
+                      {idx % 4 === 2 && <div className="col-span-4 border-t border-dashed border-gray-200 -my-1"></div>}
+                      <button
+                        onClick={() => handleSeatClick(seat)}
+                        disabled={seat.status === "booked"}
+                        className={`relative p-3 rounded-lg text-center font-semibold transition-all duration-200 ${getSeatStatusColor(seat)} ${seat.status !== "booked" && "cursor-pointer"}`}
+                      >
+                        <div className="text-sm">{seat.seatNumber}</div>
+                        <div className="text-xs mt-1 opacity-75">{getSeatStatusText(seat)}</div>
+                        {seat.isHandicap && seat.status === "available" && <FaWheelchair className="absolute top-1 right-1 text-xs" />}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+                <div className="mt-4 text-center text-xs text-gray-400">← Window &nbsp;&nbsp; Aisle &nbsp;&nbsp; Aisle &nbsp;&nbsp; Window →</div>
+              </>
+            )}
           </div>
 
           <div className="mt-6 flex justify-between items-center">

@@ -24,6 +24,10 @@ const SeatBook = () => {
 
   // ── State ──
   const [seats, setSeats]                   = useState([]);
+  const [lowerDeck, setLowerDeck]           = useState([]);
+  const [upperDeck, setUpperDeck]           = useState([]);
+  const [hasDecks, setHasDecks]             = useState(false);
+  const [activeDeck, setActiveDeck]         = useState("lower");
   const [selectedSeats, setSelectedSeats]   = useState([]);
   const [bookingStep, setBookingStep]       = useState(1);
   const [seatsLoading, setSeatsLoading]     = useState(true);
@@ -51,13 +55,42 @@ const SeatBook = () => {
     setSeatsLoading(true);
     try {
       const date = busData.date || new Date().toISOString().split("T")[0];
-      const res = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/seat-status/${busData._id}?date=${date}`);
-      const { totalSeats, bookedSeats } = res.data;
+
+      // Fetch booked seats for the date
+      const statusRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/seat-status/${busData._id}?date=${date}`);
+      const { totalSeats, bookedSeats } = statusRes.data;
       const total = totalSeats || busData.totalSeats || busData.seats || 40;
-      setSeats(Array.from({ length: total }, (_, i) => {
-        const num = String(i + 1);
-        return { id: i + 1, seatNumber: num, status: bookedSeats.includes(num) ? "booked" : "available", isHandicap: HANDICAP_SEATS.includes(num) };
-      }));
+
+      // Detect bus type for deck layout
+      const busType = (busData.busType || "").toLowerCase();
+      const isSleeper = busType.includes("sleeper") && !busType.includes("semi");
+      const isSemiSleeper = busType.includes("semi");
+      const decks = isSleeper || isSemiSleeper;
+      setHasDecks(decks);
+
+      const buildSeat = (i, deck, type) => {
+        const num = String(i);
+        return { id: i, seatNumber: num, status: bookedSeats.includes(num) ? "booked" : "available", isHandicap: HANDICAP_SEATS.includes(num), deckType: deck, seatType: type };
+      };
+
+      if (isSleeper) {
+        const half = Math.ceil(total / 2);
+        const lower = Array.from({ length: half }, (_, i) => buildSeat(i + 1, "lower", "sleeper"));
+        const upper = Array.from({ length: total - half }, (_, i) => buildSeat(half + i + 1, "upper", "sleeper"));
+        setLowerDeck(lower);
+        setUpperDeck(upper);
+        setSeats([...lower, ...upper]);
+      } else if (isSemiSleeper) {
+        const seaterCount = Math.ceil(total * 0.6);
+        const lower = Array.from({ length: seaterCount }, (_, i) => buildSeat(i + 1, "lower", "seater"));
+        const upper = Array.from({ length: total - seaterCount }, (_, i) => buildSeat(seaterCount + i + 1, "upper", "sleeper"));
+        setLowerDeck(lower);
+        setUpperDeck(upper);
+        setSeats([...lower, ...upper]);
+      } else {
+        const all = Array.from({ length: total }, (_, i) => buildSeat(i + 1, "single", "seater"));
+        setSeats(all);
+      }
     } catch {
       generateLocalSeats();
     } finally {
@@ -67,19 +100,43 @@ const SeatBook = () => {
 
   const generateLocalSeats = () => {
     const total = busData.totalSeats || busData.seats || 40;
-    setSeats(Array.from({ length: total }, (_, i) => ({
-      id: i + 1, seatNumber: String(i + 1), status: "available", isHandicap: HANDICAP_SEATS.includes(String(i + 1)),
-    })));
+    const busType = (busData.busType || "").toLowerCase();
+    const isSleeper = busType.includes("sleeper") && !busType.includes("semi");
+    const isSemiSleeper = busType.includes("semi");
+    const decks = isSleeper || isSemiSleeper;
+    setHasDecks(decks);
+
+    const buildSeat = (i, deck, type) => ({ id: i, seatNumber: String(i), status: "available", isHandicap: HANDICAP_SEATS.includes(String(i)), deckType: deck, seatType: type });
+
+    if (isSleeper) {
+      const half = Math.ceil(total / 2);
+      const lower = Array.from({ length: half }, (_, i) => buildSeat(i + 1, "lower", "sleeper"));
+      const upper = Array.from({ length: total - half }, (_, i) => buildSeat(half + i + 1, "upper", "sleeper"));
+      setLowerDeck(lower); setUpperDeck(upper); setSeats([...lower, ...upper]);
+    } else if (isSemiSleeper) {
+      const seaterCount = Math.ceil(total * 0.6);
+      const lower = Array.from({ length: seaterCount }, (_, i) => buildSeat(i + 1, "lower", "seater"));
+      const upper = Array.from({ length: total - seaterCount }, (_, i) => buildSeat(seaterCount + i + 1, "upper", "sleeper"));
+      setLowerDeck(lower); setUpperDeck(upper); setSeats([...lower, ...upper]);
+    } else {
+      setSeats(Array.from({ length: total }, (_, i) => buildSeat(i + 1, "single", "seater")));
+    }
   };
 
   // ── Seat Click ──
   const handleSeatClick = (seat) => {
     if (seat.status === "booked") return;
     if (seat.isHandicap && !passengerForm.age) { alert("Please fill passenger details first to book handicap seats"); return; }
-    setSeats(prev => prev.map(s => s.id === seat.id ? { ...s, status: s.status === "selected" ? "available" : "selected" } : s));
+
+    const updateList = (list) => list.map(s => s.id === seat.id ? { ...s, status: s.status === "selected" ? "available" : "selected" } : s);
+    setSeats(prev => updateList(prev));
+    if (hasDecks) {
+      if (seat.deckType === "lower") setLowerDeck(prev => updateList(prev));
+      else setUpperDeck(prev => updateList(prev));
+    }
     setSelectedSeats(prev => {
       const exists = prev.find(s => s.id === seat.id);
-      return exists ? prev.filter(s => s.id !== seat.id) : [...prev, { id: seat.id, seatNumber: seat.seatNumber }];
+      return exists ? prev.filter(s => s.id !== seat.id) : [...prev, { id: seat.id, seatNumber: seat.seatNumber, deckType: seat.deckType, seatType: seat.seatType }];
     });
   };
 
@@ -220,6 +277,7 @@ const SeatBook = () => {
             <BookingSteps
               bookingStep={bookingStep} setBookingStep={setBookingStep}
               busData={busData} seats={seats} selectedSeats={selectedSeatIds} seatsLoading={seatsLoading}
+              hasDecks={hasDecks} lowerDeck={lowerDeck} upperDeck={upperDeck} activeDeck={activeDeck} setActiveDeck={setActiveDeck}
               passengerForm={passengerForm} handlePassengerChange={handlePassengerChange}
               paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod}
               paymentDetails={paymentDetails} handlePaymentDetailsChange={handlePaymentDetailsChange} paymentErrors={paymentErrors}
