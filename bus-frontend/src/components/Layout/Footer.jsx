@@ -53,7 +53,7 @@ const Footer = () => {
         
             <p>   <MdLocationPin size={25} className='inline-block text-white' /> Pimple Saudagar Main Street Pune, Maharashtra</p>
             <p > Phone: +91 73852 6844309</p>
-            <p> <MdOutlineMailOutline size={20} className='inline-block text-white mr-2'/>Email: omkarjagtap368@gmail.com</p>
+            <p> <MdOutlineMailOutline size={20} className='inline-block text-white mr-2'/>Email: rajmudratravels@gmail.com</p>
           </div>
         </div>
 
