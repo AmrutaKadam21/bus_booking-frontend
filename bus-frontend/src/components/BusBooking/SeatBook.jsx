@@ -8,8 +8,6 @@ import BookingSteps from "./BookingSteps";
 import BookingSummary from "./BookingSummary";
 import downloadTicket from "./DownloadTicket";
 
-const HANDICAP_SEATS = ["3", "4", "7", "8"];
-
 const SeatBook = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,12 +20,10 @@ const SeatBook = () => {
     price: 700, totalSeats: 40, _id: "65f7c8d9e1a2b3c4d5e6f7g8",
   };
 
-  // ── State ──
   const [seats, setSeats]                   = useState([]);
   const [lowerDeck, setLowerDeck]           = useState([]);
   const [upperDeck, setUpperDeck]           = useState([]);
   const [hasDecks, setHasDecks]             = useState(false);
-  const [activeDeck, setActiveDeck]         = useState("lower");
   const [selectedSeats, setSelectedSeats]   = useState([]);
   const [bookingStep, setBookingStep]       = useState(1);
   const [seatsLoading, setSeatsLoading]     = useState(true);
@@ -54,13 +50,10 @@ const SeatBook = () => {
     setSeatsLoading(true);
     try {
       const date = busData.date || new Date().toISOString().split("T")[0];
-
-      // Fetch booked seats for the date
       const statusRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/seat-status/${busData._id}?date=${date}`);
       const { totalSeats, bookedSeats } = statusRes.data;
       const total = totalSeats || busData.totalSeats || busData.seats || 40;
 
-      // Detect bus type for deck layout
       const busType = (busData.busType || "").toLowerCase();
       const isSleeper = busType.includes("sleeper") && !busType.includes("semi");
       const isSemiSleeper = busType.includes("semi");
@@ -69,7 +62,7 @@ const SeatBook = () => {
 
       const buildSeat = (i, deck, type) => {
         const num = String(i);
-        return { id: i, seatNumber: num, status: bookedSeats.includes(num) ? "booked" : "available", isHandicap: HANDICAP_SEATS.includes(num), deckType: deck, seatType: type };
+        return { id: i, seatNumber: num, status: bookedSeats.includes(num) ? "booked" : "available", deckType: deck, seatType: type };
       };
 
       if (isSleeper) {
@@ -105,7 +98,7 @@ const SeatBook = () => {
     const decks = isSleeper || isSemiSleeper;
     setHasDecks(decks);
 
-    const buildSeat = (i, deck, type) => ({ id: i, seatNumber: String(i), status: "available", isHandicap: HANDICAP_SEATS.includes(String(i)), deckType: deck, seatType: type });
+    const buildSeat = (i, deck, type) => ({ id: i, seatNumber: String(i), status: "available", deckType: deck, seatType: type });
 
     if (isSleeper) {
       const half = Math.ceil(total / 2);
@@ -122,11 +115,10 @@ const SeatBook = () => {
     }
   };
 
-  // ── Seat Click ──
+  const handlePassengerChange = (e) => setPassengerForm({ ...passengerForm, [e.target.name]: e.target.value });
+
   const handleSeatClick = (seat) => {
     if (seat.status === "booked") return;
-    if (seat.isHandicap && !passengerForm.age) { alert("Please fill passenger details first to book handicap seats"); return; }
-
     const updateList = (list) => list.map(s => s.id === seat.id ? { ...s, status: s.status === "selected" ? "available" : "selected" } : s);
     setSeats(prev => updateList(prev));
     if (hasDecks) {
@@ -138,23 +130,6 @@ const SeatBook = () => {
       return exists ? prev.filter(s => s.id !== seat.id) : [...prev, { id: seat.id, seatNumber: seat.seatNumber, deckType: seat.deckType, seatType: seat.seatType }];
     });
   };
-
-  const getSeatStatusColor = (seat) => {
-    if (seat.status === "booked")   return "bg-red-500 cursor-not-allowed opacity-60";
-    if (seat.status === "selected") return "bg-green-500 text-white shadow-lg transform scale-105";
-    if (seat.isHandicap)            return "bg-blue-400 hover:bg-blue-500";
-    return "bg-gray-200 hover:bg-gray-300";
-  };
-
-  const getSeatStatusText = (seat) => {
-    if (seat.status === "booked")   return "Booked";
-    if (seat.status === "selected") return "Selected";
-    if (seat.isHandicap)            return "Handicap";
-    return "Available";
-  };
-
-  // ── Passenger ──
-  const handlePassengerChange = (e) => setPassengerForm({ ...passengerForm, [e.target.name]: e.target.value });
 
   const proceedToPassengerDetails = () => {
     if (selectedSeats.length === 0) { alert("Please select at least one seat"); return; }
@@ -282,7 +257,7 @@ const SeatBook = () => {
               paymentDetails={paymentDetails} handlePaymentDetailsChange={handlePaymentDetailsChange} paymentErrors={paymentErrors}
               loading={loading} bookingComplete={bookingComplete} bookingId={bookingId}
               totalPrice={totalPrice}
-              handleSeatClick={handleSeatClick} getSeatStatusColor={getSeatStatusColor} getSeatStatusText={getSeatStatusText}
+              handleSeatClick={handleSeatClick}
               proceedToPassengerDetails={proceedToPassengerDetails} proceedToPayment={proceedToPayment} handlePayment={handlePayment}
               downloadTicket={handleDownloadTicket}
             />

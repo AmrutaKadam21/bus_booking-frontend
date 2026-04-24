@@ -2,16 +2,15 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaBus, FaUser, FaCreditCard, FaMoneyBillWave, FaShieldAlt,
-  FaCheckCircle, FaWheelchair, FaInfoCircle, FaDownload,
+  FaCheckCircle, FaDownload, FaInfoCircle,
 } from "react-icons/fa";
 import { MdPayment, MdQrCodeScanner } from "react-icons/md";
 import { FaPersonWalking } from "react-icons/fa6";
 
-/* ── Berth cell matching the reference image ── */
+/* ── Berth cell (sleeper) ── */
 const BerthSeat = ({ seat, price, onClick }) => {
   const isBooked   = seat.status === "booked";
   const isSelected = seat.status === "selected";
-
   return (
     <button
       onClick={() => !isBooked && onClick(seat)}
@@ -22,23 +21,47 @@ const BerthSeat = ({ seat, price, onClick }) => {
                      "bg-white border-green-400 hover:border-green-600 hover:shadow"
       }`}
     >
-      {/* person icon area */}
-      <div className="flex-1 flex items-center justify-center w-full">
-        {isBooked ? (
-          <FaPersonWalking className="text-gray-300 text-xl" />
-        ) : isSelected ? (
-          <div className="w-5 h-5 rounded-full bg-green-500" />
-        ) : null}
+      <div className="flex-1 flex flex-col items-center justify-center w-full gap-1">
+        {isBooked && <FaPersonWalking className="text-gray-300 text-lg" />}
+        {isSelected && <div className="w-4 h-4 rounded-full bg-green-500" />}
+        <span className={`text-xs font-bold ${isBooked ? "text-gray-400" : isSelected ? "text-green-700" : "text-gray-600"}`}>{seat.seatNumber}</span>
       </div>
-      {/* price / sold bar */}
       <div className={`w-full rounded-b-xl py-1 text-center ${
         isBooked ? "bg-gray-200" : isSelected ? "bg-green-500" : "bg-green-100"
       }`}>
         <span className={`text-xs font-semibold ${
           isBooked ? "text-gray-500" : isSelected ? "text-white" : "text-green-700"
-        }`}>
-          {isBooked ? "Sold" : `₹${price}`}
-        </span>
+        }`}>{isBooked ? "Sold" : `₹${price}`}</span>
+      </div>
+    </button>
+  );
+};
+
+/* ── Seater cell (normal bus) ── — same style, slightly shorter */
+const SeaterSeat = ({ seat, price, onClick }) => {
+  const isBooked   = seat.status === "booked";
+  const isSelected = seat.status === "selected";
+  return (
+    <button
+      onClick={() => !isBooked && onClick(seat)}
+      disabled={isBooked}
+      className={`flex flex-col items-center justify-between w-16 h-16 rounded-xl border-2 transition-all duration-150 ${
+        isBooked   ? "bg-gray-100 border-gray-200 cursor-not-allowed" :
+        isSelected ? "bg-white border-green-500 shadow-md" :
+                     "bg-white border-green-400 hover:border-green-600 hover:shadow"
+      }`}
+    >
+      <div className="flex-1 flex flex-col items-center justify-center w-full gap-0.5">
+        {isBooked && <FaPersonWalking className="text-gray-300 text-sm" />}
+        {isSelected && <div className="w-3 h-3 rounded-full bg-green-500" />}
+        <span className={`text-xs font-bold ${isBooked ? "text-gray-400" : isSelected ? "text-green-700" : "text-gray-600"}`}>{seat.seatNumber}</span>
+      </div>
+      <div className={`w-full rounded-b-xl py-1 text-center ${
+        isBooked ? "bg-gray-200" : isSelected ? "bg-green-500" : "bg-green-100"
+      }`}>
+        <span className={`text-[10px] font-semibold ${
+          isBooked ? "text-gray-500" : isSelected ? "text-white" : "text-green-700"
+        }`}>{isBooked ? "Sold" : `₹${price}`}</span>
       </div>
     </button>
   );
@@ -79,7 +102,7 @@ const BookingSteps = ({
   paymentDetails, handlePaymentDetailsChange, paymentErrors,
   loading, bookingComplete, bookingId,
   totalPrice,
-  handleSeatClick, getSeatStatusColor, getSeatStatusText,
+  handleSeatClick,
   proceedToPassengerDetails, proceedToPayment, handlePayment,
   downloadTicket,
 }) => {
@@ -147,24 +170,32 @@ const BookingSteps = ({
               </div>
             </div>
           ) : (
-            /* ── SEATER: 2+2 grid ── */
-            <div>
-              <div className="mb-4 flex justify-center">
-                <div className="bg-gray-800 text-white px-6 py-2 rounded-lg text-sm font-semibold">✇ DRIVER</div>
+            /* ── SEATER: same card style, 2 | gap | 2 per row ── */
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-700 text-base">Seat Layout</h3>
+                <div className="w-8 h-8 rounded-full border-2 border-gray-400 flex items-center justify-center text-xs">🎯</div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
-                {seats.map((seat) => (
-                  <button
-                    key={seat.id}
-                    onClick={() => handleSeatClick(seat)}
-                    disabled={seat.status === "booked"}
-                    className={`relative p-3 rounded-lg text-center font-semibold transition-all duration-200 ${getSeatStatusColor(seat)}`}
-                  >
-                    <div className="text-sm">{seat.seatNumber}</div>
-                    <div className="text-xs mt-1 opacity-75">{getSeatStatusText(seat)}</div>
-                    {seat.isHandicap && seat.status === "available" && <FaWheelchair className="absolute top-1 right-1 text-xs" />}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: Math.ceil(seats.length / 4) }, (_, ri) => {
+                  const row = seats.slice(ri * 4, ri * 4 + 4);
+                  return (
+                    <div key={ri} className="flex items-center gap-2">
+                      {/* left 2 seats */}
+                      <div className="flex gap-2">
+                        {row[0] && <SeaterSeat seat={row[0]} price={busData.price} onClick={handleSeatClick} />}
+                        {row[1] && <SeaterSeat seat={row[1]} price={busData.price} onClick={handleSeatClick} />}
+                      </div>
+                      {/* aisle gap */}
+                      <div className="w-4" />
+                      {/* right 2 seats */}
+                      <div className="flex gap-2">
+                        {row[2] && <SeaterSeat seat={row[2]} price={busData.price} onClick={handleSeatClick} />}
+                        {row[3] && <SeaterSeat seat={row[3]} price={busData.price} onClick={handleSeatClick} />}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="mt-3 text-center text-xs text-gray-400">← Window &nbsp; Aisle &nbsp; Aisle &nbsp; Window →</div>
             </div>
@@ -221,9 +252,7 @@ const BookingSteps = ({
                 </select>
               </div>
             </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-800 flex items-center gap-2"><FaInfoCircle /> Handicap seats are available. Please ensure you meet the requirements.</p>
-            </div>
+
           </div>
           <div className="mt-6 flex gap-4">
             <button onClick={() => setBookingStep(1)} className="px-6 py-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition">← Back</button>
