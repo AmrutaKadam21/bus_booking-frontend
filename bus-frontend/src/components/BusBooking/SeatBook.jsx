@@ -46,7 +46,6 @@ const SeatBook = () => {
   const [paymentErrors, setPaymentErrors] = useState({});
 
   const totalPrice = selectedSeats.length * busData.price;
-  const selectedSeatIds = selectedSeats.map(s => s.id);
 
   // ── Seat Layout ──
   useEffect(() => { fetchSeatLayout(); }, []);
@@ -228,7 +227,7 @@ const SeatBook = () => {
   };
 
   // ── Download Ticket ──
-  const handleDownloadTicket = () => downloadTicket({ bookingId, busData, selectedSeats: selectedSeatIds, seats, passengerForm, paymentMethod, totalPrice });
+  const handleDownloadTicket = () => downloadTicket({ bookingId, busData, selectedSeats, passengerForm, paymentMethod, totalPrice });
 
   // ── Progress Steps ──
   const steps = [
@@ -276,8 +275,8 @@ const SeatBook = () => {
           <div className="lg:col-span-2">
             <BookingSteps
               bookingStep={bookingStep} setBookingStep={setBookingStep}
-              busData={busData} seats={seats} selectedSeats={selectedSeatIds} seatsLoading={seatsLoading}
-              hasDecks={hasDecks} lowerDeck={lowerDeck} upperDeck={upperDeck} activeDeck={activeDeck} setActiveDeck={setActiveDeck}
+              busData={busData} seats={seats} selectedSeats={selectedSeats} seatsLoading={seatsLoading}
+              hasDecks={hasDecks} lowerDeck={lowerDeck} upperDeck={upperDeck}
               passengerForm={passengerForm} handlePassengerChange={handlePassengerChange}
               paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod}
               paymentDetails={paymentDetails} handlePaymentDetailsChange={handlePaymentDetailsChange} paymentErrors={paymentErrors}
@@ -293,7 +292,7 @@ const SeatBook = () => {
           {bookingStep !== 4 && (
             <div className="lg:col-span-1">
               <BookingSummary
-                busData={busData} seats={seats} selectedSeats={selectedSeatIds}
+                busData={busData} selectedSeats={selectedSeats}
                 passengerForm={passengerForm} totalPrice={totalPrice}
               />
             </div>

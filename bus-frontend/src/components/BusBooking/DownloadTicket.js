@@ -1,4 +1,9 @@
-const downloadTicket = ({ bookingId, busData, selectedSeats, seats, passengerForm, paymentMethod, totalPrice }) => {
+const downloadTicket = ({ bookingId, busData, selectedSeats, passengerForm, paymentMethod, totalPrice }) => {
+  // selectedSeats is now array of { id, seatNumber, deckType, seatType }
+  const seatItems = selectedSeats.map(s => {
+    const deck = s.deckType && s.deckType !== 'single' ? ` (${s.deckType})` : '';
+    return `<div class="seat-item">Seat ${s.seatNumber}${deck}</div>`;
+  }).join('');
   const ticketWindow = window.open('', '_blank');
   ticketWindow.document.write(`
     <!DOCTYPE html>
@@ -86,7 +91,7 @@ const downloadTicket = ({ bookingId, busData, selectedSeats, seats, passengerFor
             <div class="seats-section">
               <div class="seats-title">SEAT ALLOCATION</div>
               <div class="seats-list">
-                ${selectedSeats.map(id => { const seat = seats.find(s => s.id === id); return `<div class="seat-item">Seat ${seat?.seatNumber}</div>`; }).join('')}
+                ${seatItems}
               </div>
               <div style="margin-top:12px;font-size:12px;color:#6c757d;">Total Seats: ${selectedSeats.length} | Price per Seat: ₹${busData.price}</div>
             </div>

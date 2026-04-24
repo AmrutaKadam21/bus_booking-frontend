@@ -5,11 +5,75 @@ import {
   FaCheckCircle, FaWheelchair, FaInfoCircle, FaDownload,
 } from "react-icons/fa";
 import { MdPayment, MdQrCodeScanner } from "react-icons/md";
+import { FaPersonWalking } from "react-icons/fa6";
+
+/* ── Berth cell matching the reference image ── */
+const BerthSeat = ({ seat, price, onClick }) => {
+  const isBooked   = seat.status === "booked";
+  const isSelected = seat.status === "selected";
+
+  return (
+    <button
+      onClick={() => !isBooked && onClick(seat)}
+      disabled={isBooked}
+      className={`flex flex-col items-center justify-between w-16 h-20 rounded-xl border-2 transition-all duration-150 ${
+        isBooked   ? "bg-gray-100 border-gray-200 cursor-not-allowed" :
+        isSelected ? "bg-white border-green-500 shadow-md" :
+                     "bg-white border-green-400 hover:border-green-600 hover:shadow"
+      }`}
+    >
+      {/* person icon area */}
+      <div className="flex-1 flex items-center justify-center w-full">
+        {isBooked ? (
+          <FaPersonWalking className="text-gray-300 text-xl" />
+        ) : isSelected ? (
+          <div className="w-5 h-5 rounded-full bg-green-500" />
+        ) : null}
+      </div>
+      {/* price / sold bar */}
+      <div className={`w-full rounded-b-xl py-1 text-center ${
+        isBooked ? "bg-gray-200" : isSelected ? "bg-green-500" : "bg-green-100"
+      }`}>
+        <span className={`text-xs font-semibold ${
+          isBooked ? "text-gray-500" : isSelected ? "text-white" : "text-green-700"
+        }`}>
+          {isBooked ? "Sold" : `₹${price}`}
+        </span>
+      </div>
+    </button>
+  );
+};
+
+/* ── One deck column layout: 1 left | gap | 2 right, per row ──
+   Matches image: window seat alone on left, two seats on right */
+const DeckGrid = ({ deck, price, onSeatClick }) => {
+  // group into rows of 3 (1 left + 2 right)
+  const rows = [];
+  for (let i = 0; i < deck.length; i += 3) rows.push(deck.slice(i, i + 3));
+
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((row, ri) => (
+        <div key={ri} className="flex items-center gap-2">
+          {/* left seat (window) */}
+          {row[0] && <BerthSeat seat={row[0]} price={price} onClick={onSeatClick} />}
+          {/* aisle gap */}
+          <div className="w-3" />
+          {/* right two seats */}
+          <div className="flex gap-2">
+            {row[1] && <BerthSeat seat={row[1]} price={price} onClick={onSeatClick} />}
+            {row[2] && <BerthSeat seat={row[2]} price={price} onClick={onSeatClick} />}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const BookingSteps = ({
   bookingStep, setBookingStep,
   busData, seats, selectedSeats, seatsLoading,
-  hasDecks, lowerDeck, upperDeck, activeDeck, setActiveDeck,
+  hasDecks, lowerDeck, upperDeck,
   passengerForm, handlePassengerChange,
   paymentMethod, setPaymentMethod,
   paymentDetails, handlePaymentDetailsChange, paymentErrors,
@@ -38,106 +102,73 @@ const BookingSteps = ({
           {/* Legend */}
           <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
             {[
-              { color: "bg-gray-200", label: "Available" },
-              { color: "bg-green-500", label: "Selected" },
-              { color: "bg-red-500 opacity-60", label: "Booked" },
-              { color: "bg-blue-400", label: "Handicap Friendly" },
-            ].map(({ color, label }) => (
+              { border: "border-green-400 bg-white", label: "Available" },
+              { border: "border-green-500 bg-green-500", label: "Selected" },
+              { border: "border-gray-200 bg-gray-100", label: "Sold" },
+            ].map(({ border, label }) => (
               <div key={label} className="flex items-center gap-2">
-                <div className={`w-6 h-6 rounded ${color}`}></div>
+                <div className={`w-6 h-8 rounded-lg border-2 ${border}`}></div>
                 <span className="text-sm">{label}</span>
               </div>
             ))}
           </div>
 
           {/* Seat Grid */}
-          <div className="relative">
-            <div className="mb-6 flex justify-center">
-              <div className="bg-gray-800 text-white px-6 py-2 rounded-lg text-sm font-semibold">✇ DRIVER</div>
+          {seatsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#d84e55]"></div>
+              <p className="ml-3 text-gray-500">Loading seat layout...</p>
             </div>
+          ) : hasDecks ? (
+            /* ── SLEEPER: Lower + Upper side by side ── */
+            <div className="overflow-x-auto">
+              <div className="flex gap-4 min-w-max mx-auto justify-center">
 
-            {seatsLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#d84e55]"></div>
-                <p className="ml-3 text-gray-500">Loading seat layout...</p>
+                {/* Lower Deck */}
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-gray-700 text-base">Lower deck</h3>
+                    <div className="w-8 h-8 rounded-full border-2 border-gray-400 flex items-center justify-center">
+                      <span className="text-gray-500 text-xs">🎯</span>
+                    </div>
+                  </div>
+                  <DeckGrid deck={lowerDeck} price={busData.price} onSeatClick={handleSeatClick} />
+                </div>
+
+                {/* Upper Deck */}
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-gray-700 text-base">Upper deck</h3>
+                    <div className="w-8 h-8"></div>
+                  </div>
+                  <DeckGrid deck={upperDeck} price={busData.price} onSeatClick={handleSeatClick} />
+                </div>
+
               </div>
-            ) : hasDecks ? (
-              <>
-                {/* Deck Tabs */}
-                <div className="flex gap-2 mb-4">
+            </div>
+          ) : (
+            /* ── SEATER: 2+2 grid ── */
+            <div>
+              <div className="mb-4 flex justify-center">
+                <div className="bg-gray-800 text-white px-6 py-2 rounded-lg text-sm font-semibold">✇ DRIVER</div>
+              </div>
+              <div className="grid grid-cols-4 gap-3">
+                {seats.map((seat) => (
                   <button
-                    onClick={() => setActiveDeck("lower")}
-                    className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
-                      activeDeck === "lower" ? "bg-[#d84e55] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                    key={seat.id}
+                    onClick={() => handleSeatClick(seat)}
+                    disabled={seat.status === "booked"}
+                    className={`relative p-3 rounded-lg text-center font-semibold transition-all duration-200 ${getSeatStatusColor(seat)}`}
                   >
-                    🛏 Lower Berth ({lowerDeck.filter(s => s.status === "available").length} available)
+                    <div className="text-sm">{seat.seatNumber}</div>
+                    <div className="text-xs mt-1 opacity-75">{getSeatStatusText(seat)}</div>
+                    {seat.isHandicap && seat.status === "available" && <FaWheelchair className="absolute top-1 right-1 text-xs" />}
                   </button>
-                  <button
-                    onClick={() => setActiveDeck("upper")}
-                    className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
-                      activeDeck === "upper" ? "bg-[#d84e55] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    🪜 Upper Berth ({upperDeck.filter(s => s.status === "available").length} available)
-                  </button>
-                </div>
-
-                {/* Deck label */}
-                <div className="text-center mb-3">
-                  <span className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-                    {activeDeck === "lower" ? "Lower Deck — Berths" : "Upper Deck — Berths"}
-                  </span>
-                </div>
-
-                {/* Sleeper grid: 2 columns (window | aisle) */}
-                <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-                  {(activeDeck === "lower" ? lowerDeck : upperDeck).map((seat) => (
-                    <button
-                      key={seat.id}
-                      onClick={() => handleSeatClick(seat)}
-                      disabled={seat.status === "booked"}
-                      className={`relative p-4 rounded-xl text-center font-semibold transition-all duration-200 border-2 ${
-                        seat.status === "booked" ? "bg-red-100 border-red-300 cursor-not-allowed opacity-60" :
-                        seat.status === "selected" ? "bg-green-500 border-green-600 text-white shadow-lg scale-105" :
-                        seat.isHandicap ? "bg-blue-100 border-blue-300 hover:bg-blue-200" :
-                        "bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-400"
-                      }`}
-                    >
-                      <div className="text-base">{seat.seatNumber}</div>
-                      <div className="text-xs mt-1 opacity-70">{getSeatStatusText(seat)}</div>
-                      {seat.isHandicap && seat.status === "available" && <FaWheelchair className="absolute top-1 right-1 text-xs text-blue-500" />}
-                    </button>
-                  ))}
-                </div>
-
-                <p className="text-center text-xs text-gray-400 mt-3">
-                  {activeDeck === "lower" ? "Lower berths — easier access" : "Upper berths — more privacy"}
-                </p>
-              </>
-            ) : (
-              <>
-                {/* Regular seater: 2+2 grid */}
-                <div className="grid grid-cols-4 gap-3">
-                  {seats.map((seat, idx) => (
-                    <React.Fragment key={seat.id}>
-                      {idx % 4 === 2 && <div className="col-span-4 border-t border-dashed border-gray-200 -my-1"></div>}
-                      <button
-                        onClick={() => handleSeatClick(seat)}
-                        disabled={seat.status === "booked"}
-                        className={`relative p-3 rounded-lg text-center font-semibold transition-all duration-200 ${getSeatStatusColor(seat)} ${seat.status !== "booked" && "cursor-pointer"}`}
-                      >
-                        <div className="text-sm">{seat.seatNumber}</div>
-                        <div className="text-xs mt-1 opacity-75">{getSeatStatusText(seat)}</div>
-                        {seat.isHandicap && seat.status === "available" && <FaWheelchair className="absolute top-1 right-1 text-xs" />}
-                      </button>
-                    </React.Fragment>
-                  ))}
-                </div>
-                <div className="mt-4 text-center text-xs text-gray-400">← Window &nbsp;&nbsp; Aisle &nbsp;&nbsp; Aisle &nbsp;&nbsp; Window →</div>
-              </>
-            )}
-          </div>
+                ))}
+              </div>
+              <div className="mt-3 text-center text-xs text-gray-400">← Window &nbsp; Aisle &nbsp; Aisle &nbsp; Window →</div>
+            </div>
+          )}
 
           <div className="mt-6 flex justify-between items-center">
             <div>
@@ -309,7 +340,7 @@ const BookingSteps = ({
               <p className="text-sm"><strong>Date:</strong> {busData.date}</p>
               <p className="text-sm"><strong>Departure:</strong> {busData.departureTime}</p>
               <p className="text-sm"><strong>Arrival:</strong> {busData.arrivalTime}</p>
-              <p className="text-sm"><strong>Seats:</strong> {selectedSeats.join(", ")}</p>
+              <p className="text-sm"><strong>Seats:</strong> {selectedSeats.map(s => s.seatNumber + (s.deckType && s.deckType !== 'single' ? ` (${s.deckType})` : '')).join(", ")}</p>
               <p className="text-sm"><strong>Passenger:</strong> {passengerForm.name}</p>
               <p className="text-sm"><strong>Email:</strong> {passengerForm.email}</p>
               <p className="text-sm"><strong>Phone:</strong> {passengerForm.phone}</p>

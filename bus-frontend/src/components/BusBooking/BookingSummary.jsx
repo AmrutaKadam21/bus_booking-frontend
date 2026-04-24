@@ -1,8 +1,9 @@
 import React from "react";
 import { FaBus, FaUser, FaShieldAlt, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaPhone, FaTicketAlt } from "react-icons/fa";
 
-const BookingSummary = ({ busData, seats, selectedSeats, passengerForm, totalPrice }) => {
-  const seatNumbers = selectedSeats.length > 0 ? selectedSeats.join(", ") : "None";
+const BookingSummary = ({ busData, selectedSeats, passengerForm, totalPrice }) => {
+  // selectedSeats is array of { id, seatNumber, deckType, seatType }
+  const hasDecks = selectedSeats.some(s => s.deckType && s.deckType !== "single");
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-6">
@@ -15,6 +16,12 @@ const BookingSummary = ({ busData, seats, selectedSeats, passengerForm, totalPri
           <span className="text-gray-500 flex items-center gap-2"><FaBus className="text-[#d84e55]" /> Bus</span>
           <span className="font-semibold text-right">{busData.busName}</span>
         </div>
+        {busData.busType && (
+          <div className="flex justify-between items-center py-2 border-b">
+            <span className="text-gray-500">Type</span>
+            <span className="font-semibold text-right">{busData.busType}</span>
+          </div>
+        )}
         <div className="flex justify-between items-center py-2 border-b">
           <span className="text-gray-500 flex items-center gap-2"><FaMapMarkerAlt className="text-[#d84e55]" /> Route</span>
           <span className="font-semibold text-right">{busData.from} → {busData.to}</span>
@@ -30,10 +37,22 @@ const BookingSummary = ({ busData, seats, selectedSeats, passengerForm, totalPri
 
         <div className="border-t border-gray-200 my-3"></div>
 
-        <div className="flex justify-between items-center py-2">
-          <span className="text-gray-500">Selected Seats</span>
-          <span className="font-semibold text-[#d84e55]">{seatNumbers}</span>
+        {/* Selected seats with deck info */}
+        <div className="py-2">
+          <span className="text-gray-500 block mb-2">Selected Seats</span>
+          {selectedSeats.length === 0 ? (
+            <span className="text-gray-400 text-xs">None selected</span>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {selectedSeats.map(s => (
+                <span key={s.id} className="bg-[#d84e55] text-white text-xs px-2 py-1 rounded-lg font-semibold">
+                  {s.seatNumber}{hasDecks ? ` (${s.deckType})` : ""}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
+
         <div className="flex justify-between items-center py-2">
           <span className="text-gray-500">Seat Count</span>
           <span className="font-semibold">{selectedSeats.length}</span>
