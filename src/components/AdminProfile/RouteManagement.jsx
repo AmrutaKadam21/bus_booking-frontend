@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { FaSearch, FaBus, FaMapMarkerAlt, FaClock, FaEdit, FaCheckCircle } from "react-icons/fa";
+import API from "../../config/api";
 
 export default function RouteManagement() {
   const [busNumber, setBusNumber] = useState("");
@@ -25,9 +26,7 @@ export default function RouteManagement() {
     setLoading(true);
     setSuccess(false);
     try {
-      const res = await axios.get(
-        `https://bus-booking-backend-rk6y.onrender.com/api/buses/by-number/${busNumber}`
-      );
+      const res = await axios.get(`${API}/api/buses/by-number/${busNumber}`);
 
       if (!res.data || res.data.message) {
         alert("Bus not found");
@@ -59,8 +58,7 @@ export default function RouteManagement() {
 
     setLoading(true);
     try {
-      const response = await axios.put(
-        `https://bus-booking-backend-rk6y.onrender.com/api/buses/update-route/${bus._id}`,
+      const response = await axios.put(`${API}/api/buses/update-route/${bus._id}`,
         {
           from: form.from,
           to: form.to,

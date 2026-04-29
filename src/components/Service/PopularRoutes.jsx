@@ -9,6 +9,7 @@ const PopularRoutes = () => {
       navigate(`/s-to-d?from=${origin}&to=${destination}`);
     } else {
       navigate("/");
+      setTimeout(() => document.getElementById("home-search")?.scrollIntoView({ behavior: "smooth" }), 100);
     }
   };
 

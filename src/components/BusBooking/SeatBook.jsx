@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaBus, FaUser, FaArrowLeft, FaCheckCircle } from "react-icons/fa";
 import { MdPayment } from "react-icons/md";
 import axios from "axios";
+import API from "../../config/api";
 
 import BookingSteps from "./BookingSteps";
 import BookingSummary from "./BookingSummary";
@@ -50,7 +51,7 @@ const SeatBook = () => {
     setSeatsLoading(true);
     try {
       const date = busData.date || new Date().toISOString().split("T")[0];
-      const statusRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/seat-status/${busData._id}?date=${date}`);
+      const statusRes = await axios.get(`${API}/api/buses/seat-status/${busData._id}?date=${date}`);
       const { totalSeats, bookedSeats } = statusRes.data;
       const total = totalSeats || busData.totalSeats || busData.seats || 40;
 
@@ -179,13 +180,13 @@ const SeatBook = () => {
     };
 
     try {
-      const res = await axios.post("https://bus-booking-backend-rk6y.onrender.com/api/bookings/create", bookingData);
+      const res = await axios.post(`${API}/api/bookings/create`, bookingData);
       const newBookingId = res.data?.data?.bookingId || "BK" + Date.now().toString(36).toUpperCase();
 
       try {
         const seatNumbers = selectedSeats.map(s => String(s.seatNumber));
         const travelDate = busData.date || new Date().toISOString().split("T")[0];
-        await axios.post(`https://bus-booking-backend-rk6y.onrender.com/api/buses/book-seats/${busData._id}`, { seatNumbers, travelDate });
+        await axios.post(`${API}/api/buses/book-seats/${busData._id}`, { seatNumbers, travelDate });
       } catch (seatErr) {
         console.warn("Seat status update failed (non-critical):", seatErr?.response?.data || seatErr.message);
       }

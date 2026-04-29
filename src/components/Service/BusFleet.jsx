@@ -47,7 +47,7 @@ const BusFleet = () => {
                       <span className="text-white/80 text-sm">{bus.price}</span>
                       <button
                         type="button"
-                        onClick={() => navigate("/")}
+                        onClick={() => { navigate("/"); setTimeout(() => document.getElementById("home-search")?.scrollIntoView({ behavior: "smooth" }), 100); }}
                         className="bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded-full text-sm font-bold transition-all transform hover:scale-105"
                       >
                         Book Now

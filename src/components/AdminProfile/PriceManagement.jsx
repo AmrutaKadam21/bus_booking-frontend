@@ -4,6 +4,7 @@ import {
   FaRupeeSign, FaSearch, FaBus, FaTag, FaCheckCircle,
   FaArrowUp, FaArrowDown, FaPercent,
 } from "react-icons/fa";
+import API from "../../config/api";
 
 const QUICK_ADJUSTMENTS = [
   { label: "+5%",  type: "percent", value: 5,   color: "bg-green-100 text-green-700 hover:bg-green-200" },
@@ -26,9 +27,7 @@ export default function PriceManagement() {
     setSuccess(false);
     setBus(null);
     try {
-      const res = await axios.get(
-        `https://bus-booking-backend-rk6y.onrender.com/api/buses/by-number/${busNumber}`
-      );
+      const res = await axios.get(`${API}/api/buses/by-number/${busNumber}`);
       if (!res.data || res.data.message) { alert("Bus not found"); return; }
       setBus(res.data);
       setNewPrice(res.data.price ?? "");
@@ -57,8 +56,7 @@ export default function PriceManagement() {
   setLoading(true);
 
   try {
-    const res = await axios.put(
-  `https://bus-booking-backend-rk6y.onrender.com/api/buses/price/${bus._id}`,  
+    const res = await axios.put(`${API}/api/buses/price/${bus._id}`,
   { price: Number(newPrice) }
 );
 

@@ -4,6 +4,7 @@ import { MdEventSeat } from "react-icons/md";
 import { AiOutlineDashboard } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import API from "../../config/api";
 
 import AddBus from "./AddBus";
 import ViewBuses from "./ViewBuses";
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("loginTime");
+    window.dispatchEvent(new Event("authChange"));
     navigate("/");
   };
 
@@ -55,8 +57,8 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       const [busRes, bookingRes] = await Promise.all([
-        axios.get("https://bus-booking-backend-rk6y.onrender.com/api/buses"),
-        axios.get("https://bus-booking-backend-rk6y.onrender.com/api/bookings/all").catch(() => ({ data: { data: [] } })),
+        axios.get(`${API}/api/buses`),
+        axios.get(`${API}/api/bookings/all`).catch(() => ({ data: { data: [] } })),
       ]);
       const buses = busRes.data || [];
       const bookings = bookingRes.data?.data || [];
@@ -77,7 +79,7 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const res = await axios.get("https://bus-booking-backend-rk6y.onrender.com/api/auth/users");
+      const res = await axios.get(`${API}/api/auth/users`);
       setUsers(res.data.data || []);
     } catch (e) {
       console.error("Failed to fetch users", e);
@@ -172,7 +174,6 @@ export default function AdminDashboard() {
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-              <button onClick={fetchStats} className="text-sm text-orange-500 hover:text-orange-600 font-semibold transition">↻ Refresh</button>
             </div>
 
             {/* CARDS */}

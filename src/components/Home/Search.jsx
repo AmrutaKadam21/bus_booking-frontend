@@ -1,112 +1,73 @@
 import React, { useState } from "react";
-import { FaMapMarkerAlt, FaSearch } from "react-icons/fa";
+import { FaMapMarkerAlt, FaSearch, FaCalendarAlt, FaTimes } from "react-icons/fa";
 import { MdSwapHoriz } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
+import { formatDate } from "../Service/SearchBar";
+import useCities from "../../hooks/useCities";
 
-const cities = [
-  "Mumbai",
-  "Pune",
-  "Nashik",
-  "Nagpur",
-  "Kolhapur",
-  "Aurangabad",
-  "Solapur",
-  "Satara",
-  "Ahmednagar",
-  "Delhi",
-  "Bangalore",
-  "Hyderabad",
-  "Chennai",
-];
+const today = new Date().toISOString().split("T")[0];
 
 const Search = () => {
+  const cities = useCities();
   const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [to,   setTo]   = useState("");
   const [date, setDate] = useState("");
   const [showFrom, setShowFrom] = useState(false);
-  const [showTo, setShowTo] = useState(false);
-
-  // Filter cities
-  const filterCities = (value) => {
-    return cities.filter((city) =>
-      city.toLowerCase().includes(value.toLowerCase())
-    );
-  };
-
-  // Swap function
-  const handleSwap = () => {
-    setFrom(to);
-    setTo(from);
-  };
-
-
+  const [showTo,   setShowTo]   = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
   const navigate = useNavigate();
 
-  
-const handleSearch = () => {
-  if (!from || !to) {
-    alert("Please enter both cities");
-    return;
-  }
+  const filterCities = (val) =>
+    val ? cities.filter((c) => c.toLowerCase().includes(val.toLowerCase())) : cities;
 
-  const user = localStorage.getItem("user");
+  const handleSwap = () => { setFrom(to); setTo(from); };
+  const isLoggedIn = () => !!localStorage.getItem("user");
 
-  if (!user) {
-    navigate("/register");
-    return;
-  }
+  const handleFromFocus = () => {
+    if (!isLoggedIn()) { setShowAuthPopup(true); return; }
+    setShowFrom(true);
+  };
 
-  navigate(`/s-to-d?from=${from}&to=${to}&date=${date}`);
-};
-
+  const handleSearch = () => {
+    if (!from || !to) { alert("Please enter both cities"); return; }
+    if (!isLoggedIn()) { setShowAuthPopup(true); return; }
+    navigate(`/s-to-d?from=${from}&to=${to}&date=${date}`);
+  };
 
   return (
-    <div className="w-full flex justify-center mt-10 px-4">
+    <div className="w-full flex justify-center mt-10 px-4 relative">
       <div className="bg-gray-200 rounded-[30px] sm:rounded-[40px] px-4 sm:px-6 py-5 sm:py-6 w-full max-w-6xl shadow-md">
 
-        {/* Top Row */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-4">
           <span>🚌 BUSES</span>
-          <span className="text-gray-700 text-xs sm:text-sm">
-            INDIA'S FASTEST BOOKING PLATFORM
-          </span>
+          <span className="text-gray-700 text-xs sm:text-sm">INDIA'S FASTEST BOOKING PLATFORM</span>
         </div>
 
-        <div className="border-t border-gray-300 mb-4"></div>
+        <div className="border-t border-gray-300 mb-4" />
 
-        {/* Search Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-gray-100 rounded-2xl sm:rounded-full overflow-visible relative">
+        <div className="flex flex-col sm:flex-row items-stretch bg-gray-100 rounded-2xl sm:rounded-full overflow-visible relative">
 
           {/* FROM */}
           <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
-            <FaMapMarkerAlt className="text-orange-500" />
+            <FaMapMarkerAlt className="text-orange-500 shrink-0" />
             <div className="w-full">
               <p className="text-xs text-gray-500 font-semibold">FROM</p>
               <input
                 type="text"
                 value={from}
-                onChange={(e) => {
-                  setFrom(e.target.value);
-                  setShowFrom(true);
-                }}
-                onFocus={() => setShowFrom(true)}
                 placeholder="Enter city"
+                onFocus={handleFromFocus}
+                onChange={(e) => { if (!isLoggedIn()) { setShowAuthPopup(true); return; } setFrom(e.target.value); setShowFrom(true); }}
+                onBlur={() => setTimeout(() => setShowFrom(false), 150)}
                 className="bg-transparent outline-none w-full font-semibold text-lg"
               />
-
-              {/* Suggestions */}
-              {showFrom && from && (
-                <div className="absolute top-16 left-0 w-full bg-white shadow rounded z-10 max-h-40 overflow-y-auto">
+              {showFrom && (
+                <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-lg z-50 max-h-48 overflow-y-auto border border-gray-100 mt-1">
                   {filterCities(from).map((city, i) => (
-                    <div
-                      key={i}
-                      onClick={() => {
-                        setFrom(city);
-                        setShowFrom(false);
-                      }}
-                      className="p-2 hover:bg-gray-200 cursor-pointer"
-                    >
-                      {city}
+                    <div key={i} onMouseDown={() => { setFrom(city); setShowFrom(false); }}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm text-gray-700">
+                      <FaMapMarkerAlt className="text-orange-400 text-xs shrink-0" />{city}
                     </div>
                   ))}
                 </div>
@@ -115,45 +76,32 @@ const handleSearch = () => {
           </div>
 
           {/* SWAP */}
-          <div className="hidden sm:flex items-center justify-center">
-            <button
-              onClick={handleSwap}
-              className="bg-white p-2 rounded-full shadow"
-            >
+          <div className="hidden sm:flex items-center justify-center px-1">
+            <button onClick={handleSwap} className="bg-white p-2 rounded-full shadow hover:shadow-md transition">
               <MdSwapHoriz className="text-orange-500 text-xl" />
             </button>
           </div>
 
           {/* TO */}
           <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
-            <FaMapMarkerAlt className="text-orange-500" />
+            <FaMapMarkerAlt className="text-orange-500 shrink-0" />
             <div className="w-full">
               <p className="text-xs text-gray-500 font-semibold">TO</p>
               <input
                 type="text"
                 value={to}
-                onChange={(e) => {
-                  setTo(e.target.value);
-                  setShowTo(true);
-                }}
-                onFocus={() => setShowTo(true)}
                 placeholder="Enter city"
+                onFocus={() => setShowTo(true)}
+                onChange={(e) => { setTo(e.target.value); setShowTo(true); }}
+                onBlur={() => setTimeout(() => setShowTo(false), 150)}
                 className="bg-transparent outline-none w-full font-semibold text-lg"
               />
-
-              {/* Suggestions */}
-              {showTo && to && (
-                <div className="absolute top-16 left-0 w-full bg-white shadow rounded z-10 max-h-40 overflow-y-auto">
+              {showTo && (
+                <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-lg z-50 max-h-48 overflow-y-auto border border-gray-100 mt-1">
                   {filterCities(to).map((city, i) => (
-                    <div
-                      key={i}
-                      onClick={() => {
-                        setTo(city);
-                        setShowTo(false);
-                      }}
-                      className="p-2 hover:bg-gray-200 cursor-pointer"
-                    >
-                      {city}
+                    <div key={i} onMouseDown={() => { setTo(city); setShowTo(false); }}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm text-gray-700">
+                      <FaMapMarkerAlt className="text-orange-400 text-xs shrink-0" />{city}
                     </div>
                   ))}
                 </div>
@@ -162,29 +110,62 @@ const handleSearch = () => {
           </div>
 
           {/* DATE */}
-          <div className="px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
+          <div className="relative px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300 flex flex-col justify-center">
             <p className="text-xs text-gray-500 font-semibold">DEPARTURE</p>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowDatePicker(true)}>
+              <FaCalendarAlt className="text-orange-400 text-sm shrink-0" />
+              <span className="font-semibold text-base text-gray-800">
+                {date ? formatDate(date) : <span className="text-gray-400 font-normal text-sm">Select date</span>}
+              </span>
+            </div>
             <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="bg-transparent outline-none font-semibold text-lg"
+              type="date" min={today} value={date}
+              onChange={(e) => { setDate(e.target.value); setShowDatePicker(false); }}
+              onBlur={() => setShowDatePicker(false)}
+              className={`absolute inset-0 opacity-0 cursor-pointer w-full h-full ${showDatePicker ? "block" : "hidden"}`}
+              style={{ zIndex: 10 }}
+              autoFocus={showDatePicker}
             />
           </div>
 
-          {/* SEARCH BUTTON */}
-          <div className="px-4 py-3 sm:py-0">
-            <button
-              onClick={handleSearch}
-              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full flex items-center justify-center gap-2 font-bold text-lg"
-            >
-              <FaSearch />
-              SEARCH
+          {/* SEARCH */}
+          <div className="flex items-stretch px-3 py-2 sm:py-0">
+            <button onClick={handleSearch}
+              className="self-stretch sm:my-2 w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 rounded-full flex items-center justify-center gap-2 font-bold text-base transition">
+              <FaSearch /> SEARCH
             </button>
           </div>
-
         </div>
       </div>
+
+      {/* Auth popup */}
+      {showAuthPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl relative">
+            <button onClick={() => setShowAuthPopup(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+              <FaTimes />
+            </button>
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaMapMarkerAlt className="text-orange-500 text-2xl" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Login to Search Buses</h3>
+              <p className="text-sm text-gray-500 mt-2">Please login or register to search and book buses.</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => { setShowAuthPopup(false); navigate("/login"); }}
+                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition">
+                Login
+              </button>
+              <button onClick={() => { setShowAuthPopup(false); navigate("/register"); }}
+                className="w-full border-2 border-orange-500 text-orange-500 hover:bg-orange-50 py-3 rounded-xl font-bold transition">
+                Register
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

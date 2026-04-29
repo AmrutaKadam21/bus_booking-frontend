@@ -174,7 +174,7 @@ const ImageBackground = () => {
       </div>
 
       {/* ── Search bar (overlapping) ── */}
-      <div ref={sectionRef} className="relative z-30 w-full -mt-32 md:-mt-24 hero-search">
+      <div ref={sectionRef} id="home-search" className="relative z-30 w-full -mt-32 md:-mt-24 hero-search">
         <Search />
       </div>
     </div>
