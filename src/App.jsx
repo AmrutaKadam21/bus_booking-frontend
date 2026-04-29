@@ -26,14 +26,21 @@ function App() {
     <>
       {!splashDone && <SplashScreen onDone={handleSplashDone} />}
 
-      {/* Black bg behind app prevents white flash during fade-in */}
+      {/* Solid black layer sits behind app — prevents any white flash */}
       {!splashDone && (
-        <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 9998, pointerEvents: "none" }} />
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "#000",
+          zIndex: 9998,
+          pointerEvents: "none",
+        }} />
       )}
 
+      {/* App fades in after splash completes */}
       <div style={{
         opacity: splashDone ? 1 : 0,
-        transition: splashDone ? "opacity 0.5s ease" : "none",
+        transition: splashDone ? "opacity 0.45s ease" : "none",
+        visibility: splashDone ? "visible" : "hidden",
       }}>
         <Header />
         <AppRoutes />

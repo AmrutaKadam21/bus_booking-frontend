@@ -44,7 +44,7 @@ const Search = () => {
   };
 
   return (
-    <div className="w-full flex justify-center mt-10 px-4 relative">
+    <div className="w-full flex justify-center mt-10 px-4">
       <div className="bg-gray-200 rounded-[30px] sm:rounded-[40px] px-4 sm:px-6 py-5 sm:py-6 w-full max-w-6xl shadow-md">
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-4">
@@ -54,7 +54,7 @@ const Search = () => {
 
         <div className="border-t border-gray-300 mb-4" />
 
-        <div className="flex flex-col sm:flex-row items-stretch bg-gray-100 rounded-2xl sm:rounded-full overflow-visible relative">
+        <div className="flex flex-col sm:flex-row items-stretch bg-gray-100 rounded-2xl sm:rounded-full relative" style={{zIndex: 100}}>
 
           {/* FROM */}
           <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
