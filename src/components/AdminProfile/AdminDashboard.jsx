@@ -44,6 +44,7 @@ export default function AdminDashboard() {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     localStorage.removeItem("loginTime");
+    sessionStorage.removeItem("sessionActive");
     window.dispatchEvent(new Event("authChange"));
     navigate("/");
   };

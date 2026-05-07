@@ -27,6 +27,7 @@ const Login = () => {
       localStorage.setItem("token",     res.data.token);
       localStorage.setItem("user",      JSON.stringify(res.data.user));
       localStorage.setItem("loginTime", Date.now().toString());
+      sessionStorage.setItem("sessionActive", "1"); // keep session alive on refresh
       window.dispatchEvent(new Event("authChange"));
 
       const role = res.data.user?.role || "user";
