@@ -38,8 +38,7 @@ const Register = () => {
     try {
       const res = await axios.post("https://bus-booking-backend-rk6y.onrender.com/api/auth/register", form);
 
-      // Do NOT auto-login — redirect to login page instead
-      // Clear any token that backend may have returned
+      // Clear any existing auth data and redirect to login
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       localStorage.removeItem("loginTime");
@@ -47,7 +46,8 @@ const Register = () => {
       setSuccess(res.data.message || "Registration successful! Redirecting to login...");
       setForm({ name: "", phone: "", email: "", password: "" });
 
-      setTimeout(() => navigate("/login"), 1500);
+      // Auto redirect to login after 2 seconds
+      setTimeout(() => navigate("/login"), 2000);
 
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Please try again.");

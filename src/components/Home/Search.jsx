@@ -66,7 +66,7 @@ const handleSearch = () => {
 
         {/* Top Row */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-4">
-          <span>🚌 BUSES</span>
+          <span>BUSES</span>
           <span className="text-gray-700 text-xs sm:text-sm">
             INDIA'S FASTEST BOOKING PLATFORM
           </span>

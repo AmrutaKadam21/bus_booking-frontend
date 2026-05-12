@@ -17,6 +17,9 @@ import {
   FaSuitcase,
 } from "react-icons/fa";
 import { MdSwapHoriz } from "react-icons/md";
+import { formatDuration } from "../../utils/timeUtils";
+import { requireAuth } from "../../utils/auth";
+import { isValidDepartureTime, getTimeFilterMessage } from "../../utils/timeFilter";
 
 const cities = [
   "Mumbai", "Pune", "Nashik", "Nagpur", "Kolhapur",
@@ -260,7 +263,466 @@ const SearchResult = () => {
         });
 
         console.log("Formatted Buses:", formatted);
-        const maxP = Math.max(...formatted.map(b => b.price), 0);
+        
+        // Filter buses by departure time (1 hour from current time)
+        const timeFilteredBuses = formatted.filter(bus => 
+          isValidDepartureTime(bus.departure, date)
+        );
+        
+        console.log(`Filtered ${formatted.length} buses to ${timeFilteredBuses.length} (time filter applied)`);
+        
+        // Set time filter info for today's searches
+        const today = new Date().toISOString().split('T')[0];
+        if (date === today) {
+          setTimeFilterInfo(getTimeFilterMessage());
+        } else {
+          setTimeFilterInfo(null);
+        }
+        const maxP = Math.max(...timeFilteredBuses.map(b => b.price), 0);
+        setFilters(prev => ({ ...prev, priceRange: { ...prev.priceRange, max: maxP } }));
+        setAllBuses(timeFilteredBuses);
+        setFilteredBuses(timeFilteredBuses);
+      } catch (error) {
+        console.error("Error fetching buses:", error);
+        setAllBuses([]);
+        setFilteredBuses([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBuses();
+  }, [from, to]);
+
+  // Apply filters
+  useEffect(() => {
+    let filtered = [...allBuses];
+
+    // Bus type filter
+    if (filters.busTypes.length > 0) {
+      filtered = filtered.filter(bus => {
+        return filters.busTypes.some(filterType => {
+          if (filterType === "AC" && (bus.type.includes("AC") || bus.originalType.toLowerCase().includes("ac"))) return true;
+          if (filterType === "Non AC" && (bus.type.includes("Non AC") || bus.originalType.toLowerCase().includes("non"))) return true;
+          if (filterType === "Seater" && (bus.type.includes("Seater") || bus.originalType.toLowerCase().includes("seater"))) return true;
+          if (filterType === "Sleeper" && (bus.type.includes("Sleeper") || bus.originalType.toLowerCase().includes("sleeper"))) return true;
+          return false;
+        });
+      });
+    }
+
+    // Price filter
+    filtered = filtered.filter(bus => bus.price >= filters.priceRange.min && bus.price <= filters.priceRange.max);
+
+    // Time filter
+    if (filters.departureTimes.length > 0) {
+      filtered = filtered.filter(bus => {
+        const time = bus.departure;
+        const hour = parseInt(time.split(":")[0]);
+        const isAM = time.includes("AM");
+        const isPM = time.includes("PM");
+        let hour24 = hour;
+        if (isPM && hour !== 12) hour24 += 12;
+        if (isAM && hour === 12) hour24 = 0;
+
+        return filters.departureTimes.some(timeSlot => {
+          if (timeSlot === "Before 10 AM" && hour24 < 10) return true;
+          if (timeSlot === "10 AM–5 PM" && hour24 >= 10 && hour24 < 17) return true;
+          if (timeSlot === "5 PM–11 PM" && hour24 >= 17 && hour24 < 23) return true;
+          if (timeSlot === "After 11 PM" && (hour24 >= 23 || hour24 < 6)) return true;
+          return false;
+        });
+      });
+    }
+
+    // Rating filter
+    if (filters.minRating > 0) {
+      filtered = filtered.filter(bus => bus.rating >= filters.minRating);
+    }
+
+    // Sort
+    if (sortBy === "price-low") filtered.sort((a, b) => a.price - b.price);
+    else if (sortBy === "price-high") filtered.sort((a, b) => b.price - a.price);
+    else if (sortBy === "departure") filtered.sort((a, b) => a.departure.localeCompare(b.departure));
+    else if (sortBy === "rating") filtered.sort((a, b) => b.rating - a.rating);
+
+    setFilteredBuses(filtered);
+  }, [allBuses, filters, sortBy]);
+
+  const handleSearch = () => {
+    if (!from || !to) {
+      alert("Please select both departure and destination cities");
+      return;
+    }
+    const params = new URLSearchParams({ from, to, date });
+    navigate(`/s-to-d?${params.toString()}`);
+  };
+
+  const swapCities = () => {
+    const temp = from;
+    setFrom(to);
+    setTo(temp);
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      busTypes: [],
+      departureTimes: [],
+      priceRange: { min: 0, max: Math.max(...allBuses.map(b => b.price), 99999) },
+      minRating: 0
+    });
+  };
+
+  const maxPrice = Math.max(...allBuses.map(b => b.price), 99999);
+
+  const handleBookNow = (bus) => {
+    if (!requireAuth(navigate)) return;
+    navigate("/seatbook", { state: { busData: { ...bus, date } } });
+  };
+
+  const [selectedBoardingPoint, setSelectedBoardingPoint] = useState({});
+  const [selectedDroppingPoint, setSelectedDroppingPoint] = useState({});
+  const [timeFilterInfo, setTimeFilterInfo] = useState(null);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Search Bar */}
+      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-center">
+            {/* From */}
+            <div className="relative flex-1">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">FROM</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  onFocus={() => setShowFrom(true)}
+                  onBlur={() => setTimeout(() => setShowFrom(false), 200)}
+                  placeholder="Departure city"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
+                />
+                <FaMapMarkerAlt className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                {showFrom && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-50">
+                    {cities.filter(city => city.toLowerCase().includes(from.toLowerCase())).map((city) => (
+                      <div key={city} onClick={() => { setFrom(city); setShowFrom(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm">{city}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Swap */}
+            <button onClick={swapCities} className="p-2 text-[#d84e55] hover:bg-red-50 rounded-full transition mt-6 lg:mt-0">
+              <MdSwapHoriz size={24} />
+            </button>
+
+            {/* To */}
+            <div className="relative flex-1">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">TO</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  onFocus={() => setShowTo(true)}
+                  onBlur={() => setTimeout(() => setShowTo(false), 200)}
+                  placeholder="Destination city"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
+                />
+                <FaMapMarkerAlt className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                {showTo && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-50">
+                    {cities.filter(city => city.toLowerCase().includes(to.toLowerCase())).map((city) => (
+                      <div key={city} onClick={() => { setTo(city); setShowTo(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm">{city}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Date */}
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-500 mb-1">DEPARTURE DATE</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
+              />
+            </div>
+
+            {/* Search Button */}
+            <button onClick={handleSearch} className="px-8 py-3 bg-[#d84e55] text-white rounded-lg hover:bg-red-600 transition font-semibold flex items-center gap-2 mt-6 lg:mt-0">
+              <FaSearch /> SEARCH
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="flex gap-6">
+          {/* Filters Sidebar */}
+          <div className="hidden lg:block w-80">
+            <div className="bg-white rounded-xl shadow-sm border p-6 sticky top-24">
+              <FilterContent
+                filters={filters}
+                setFilters={setFilters}
+                onClearAll={clearAllFilters}
+                availableBusesCount={filteredBuses.length}
+                maxPrice={maxPrice}
+              />
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Mobile Filter Toggle */}
+            <div className="lg:hidden mb-4">
+              <button onClick={() => setShowFilter(!showFilter)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg">
+                <FaSlidersH /> Filters {showFilter && <FaTimes />}
+              </button>
+              {showFilter && (
+                <div className="mt-4 bg-white rounded-xl shadow-sm border p-6">
+                  <FilterContent
+                    filters={filters}
+                    setFilters={setFilters}
+                    onClearAll={clearAllFilters}
+                    availableBusesCount={filteredBuses.length}
+                    maxPrice={maxPrice}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Results Header */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">
+                  {from} → {to}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {new Date(date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} • {filteredBuses.length} buses found
+                </p>
+              </div>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d84e55]">
+                <option value="">Sort by</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="departure">Departure Time</option>
+                <option value="rating">Rating</option>
+              </select>
+            </div>
+
+            {/* Time Filter Notification */}
+            {timeFilterInfo && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <p className="text-sm text-blue-700">
+                    <span className="font-semibold">Time Filter Active:</span> {timeFilterInfo.message}
+                  </p>
+                </div>
+                <p className="text-xs text-blue-600 mt-1 ml-4">
+                  Current time: {timeFilterInfo.currentTime} | Minimum departure: {timeFilterInfo.minimumTime}
+                </p>
+              </div>
+            )}
+
+            {/* Loading */}
+            {loading && (
+              <div className="text-center py-12">
+                <div className="inline-block w-8 h-8 border-4 border-[#d84e55] border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-gray-500">Searching for buses...</p>
+              </div>
+            )}
+
+            {/* No Results */}
+            {!loading && filteredBuses.length === 0 && (
+              <div className="text-center py-12">
+                <FaBus className="mx-auto text-6xl text-gray-300 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                  {timeFilterInfo ? "No buses available" : "No buses found"}
+                </h3>
+                <p className="text-gray-500">
+                  {timeFilterInfo 
+                    ? "All buses for today depart within the next hour. Try searching for tomorrow or adjust your travel time."
+                    : "Try adjusting your search criteria or filters"
+                  }
+                </p>
+                {timeFilterInfo && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg inline-block">
+                    <p className="text-sm text-yellow-700">
+                      🕰️ Buses must depart at least 1 hour from now ({timeFilterInfo.minimumTime})
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bus Cards */}
+            <div className="space-y-4">
+              {filteredBuses.map((bus) => (
+                <div key={bus.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition">
+                  <div className="p-6">
+                    {/* Bus Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-800">{bus.name}</h3>
+                        <p className="text-sm text-gray-500">{bus.type} • {bus.busNumber}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 mb-1">
+                          <span className="text-sm font-semibold text-gray-700">{bus.rating}</span>
+                          <span className="text-yellow-400">★</span>
+                        </div>
+                        <p className="text-xs text-gray-500">({Math.floor(Math.random() * 500) + 100} reviews)</p>
+                      </div>
+                    </div>
+
+                    {/* Route & Time */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-gray-800">{bus.departure}</p>
+                          <p className="text-xs text-gray-500">{from}</p>
+                        </div>
+                        <div className="flex-1 text-center">
+                          <p className="text-xs text-gray-500 mb-1">{formatDuration(bus.duration)}</p>
+                          <div className="h-px bg-gray-300 relative">
+                            <FaBus className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white text-[#d84e55] text-sm" />
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-lg font-bold text-gray-800">{bus.arrival}</p>
+                          <p className="text-xs text-gray-500">{to}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-[#d84e55]">₹{bus.price}</p>
+                        <p className="text-xs text-gray-500">{bus.totalSeats - (bus.bookedSeats?.length || 0)} seats available</p>
+                      </div>
+                    </div>
+
+                    {/* Amenities */}
+                    {bus.amenities && bus.amenities.length > 0 && (
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-xs font-semibold text-gray-500">AMENITIES:</span>
+                        <div className="flex gap-2">
+                          {bus.amenities.slice(0, 4).map((amenity, idx) => (
+                            <div key={idx} className="flex items-center gap-1 text-xs text-gray-600">
+                              {amenityIcon(amenity)}
+                              <span>{amenity}</span>
+                            </div>
+                          ))}
+                          {bus.amenities.length > 4 && <span className="text-xs text-gray-500">+{bus.amenities.length - 4} more</span>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Boarding & Dropping Points */}
+                    {(bus.boarding?.length > 0 || bus.dropping?.length > 0) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        {bus.boarding?.length > 0 && (
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-2">BOARDING POINT</label>
+                            <select
+                              value={selectedBoardingPoint[bus.id] || ""}
+                              onChange={(e) => setSelectedBoardingPoint(prev => ({ ...prev, [bus.id]: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
+                            >
+                              <option value="">Select boarding point</option>
+                              {bus.boarding.map((point, idx) => (
+                                <option key={idx} value={point}>{point}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                        {bus.dropping?.length > 0 && (
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-2">DROPPING POINT</label>
+                            <select
+                              value={selectedDroppingPoint[bus.id] || ""}
+                              onChange={(e) => setSelectedDroppingPoint(prev => ({ ...prev, [bus.id]: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
+                            >
+                              <option value="">Select dropping point</option>
+                              {bus.dropping.map((point, idx) => (
+                                <option key={idx} value={point}>{point}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-between items-center">
+                      <button
+                        onClick={() => setExpandedCard(expandedCard === bus.id ? null : bus.id)}
+                        className="flex items-center gap-2 text-[#d84e55] hover:text-red-600 transition text-sm font-semibold"
+                      >
+                        More Details {expandedCard === bus.id ? <FaChevronUp /> : <FaChevronDown />}
+                      </button>
+                      <button
+                        onClick={() => handleBookNow(bus)}
+                        className="px-6 py-2 bg-[#d84e55] text-white rounded-lg hover:bg-red-600 transition font-semibold"
+                      >
+                        Book Now
+                      </button>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {expandedCard === bus.id && (
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <h4 className="font-semibold text-gray-700 mb-2">Bus Information</h4>
+                            <div className="space-y-1 text-gray-600">
+                              <p><span className="font-medium">Total Seats:</span> {bus.totalSeats}</p>
+                              <p><span className="font-medium">Available:</span> {bus.totalSeats - (bus.bookedSeats?.length || 0)}</p>
+                              <p><span className="font-medium">Bus Type:</span> {bus.originalType}</p>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-700 mb-2">Journey Details</h4>
+                            <div className="space-y-1 text-gray-600">
+                              <p><span className="font-medium">Duration:</span> {formatDuration(bus.duration)}</p>
+                              <p><span className="font-medium">Distance:</span> ~{Math.floor(Math.random() * 300) + 100} km</p>
+                              <p><span className="font-medium">Operator:</span> {bus.name}</p>
+                            </div>
+                          </div>
+                        </div>
+                        {bus.amenities && bus.amenities.length > 0 && (
+                          <div className="mt-4">
+                            <h4 className="font-semibold text-gray-700 mb-2">All Amenities</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {bus.amenities.map((amenity, idx) => (
+                                <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex items-center gap-1">
+                                  {amenityIcon(amenity)}
+                                  {amenity}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SearchResult;rice), 0);
         setFilters(prev => ({ ...prev, priceRange: { min: 0, max: maxP } }));
         setAllBuses(formatted);
         setFilteredBuses(formatted);
@@ -849,5 +1311,6 @@ const SearchResult = () => {
     </div>
   );
 };
+
 
 export default SearchResult;

@@ -6,34 +6,73 @@ import {
 } from "react-icons/fa";
 import { MdPayment, MdQrCodeScanner } from "react-icons/md";
 import { FaPersonWalking } from "react-icons/fa6";
+import { getSeatStatusWithGender } from "../../utils/genderSeatUtils";
 
-/* ── Berth cell (sleeper) ── */
-const BerthSeat = ({ seat, price, onClick }) => {
-  const isBooked   = seat.status === "booked";
-  const isSelected = seat.status === "selected";
+/* ── Enhanced Berth cell with gender compatibility ── */
+const BerthSeat = ({ seat, price, onClick, userGender, allSeats, busType }) => {
+  const seatWithGender = getSeatStatusWithGender(seat, userGender, allSeats, busType);
+  const isBooked = seatWithGender.status === "booked";
+  const isSelected = seatWithGender.status === "selected";
+  const canBook = seatWithGender.canBook;
+  const hasMessage = seatWithGender.message;
+  
   return (
-    <button
-      onClick={() => !isBooked && onClick(seat)}
-      disabled={isBooked}
-      className={`flex flex-col items-center justify-between w-16 h-20 rounded-xl border-2 transition-all duration-150 ${
-        isBooked   ? "bg-gray-100 border-gray-200 cursor-not-allowed" :
-        isSelected ? "bg-white border-green-500 shadow-md" :
-                     "bg-white border-green-400 hover:border-green-600 hover:shadow"
-      }`}
-    >
-      <div className="flex-1 flex flex-col items-center justify-center w-full gap-1">
-        {isBooked && <FaPersonWalking className="text-gray-300 text-lg" />}
-        {isSelected && <div className="w-4 h-4 rounded-full bg-green-500" />}
-        <span className={`text-xs font-bold ${isBooked ? "text-gray-400" : isSelected ? "text-green-700" : "text-gray-600"}`}>{seat.seatNumber}</span>
-      </div>
-      <div className={`w-full rounded-b-xl py-1 text-center ${
-        isBooked ? "bg-gray-200" : isSelected ? "bg-green-500" : "bg-green-100"
-      }`}>
-        <span className={`text-xs font-semibold ${
-          isBooked ? "text-gray-500" : isSelected ? "text-white" : "text-green-700"
-        }`}>{isBooked ? "Sold" : `₹${price}`}</span>
-      </div>
-    </button>
+    <div className="relative">
+      <button
+        onClick={() => canBook && onClick(seat)}
+        disabled={isBooked || !canBook}
+        className={`flex flex-col items-center justify-between w-16 h-20 rounded-xl border-2 transition-all duration-150 ${
+          isBooked ? "bg-gray-100 border-gray-200 cursor-not-allowed" :
+          !canBook ? "bg-red-50 border-red-200 cursor-not-allowed" :
+          isSelected ? "bg-white border-green-500 shadow-md" :
+                       "bg-white border-green-400 hover:border-green-600 hover:shadow"
+        }`}
+        title={hasMessage ? seatWithGender.message : ''}
+      >
+        <div className="flex-1 flex flex-col items-center justify-center w-full gap-1">
+          {isBooked && (
+            <div className="flex items-center justify-center">
+              {seatWithGender.showGenderIcon ? (
+                <span className="text-lg">{seatWithGender.genderIcon}</span>
+              ) : (
+                <FaPersonWalking className="text-gray-300 text-lg" />
+              )}
+            </div>
+          )}
+          {!canBook && !isBooked && (
+            <span className="text-red-400 text-xs">✕</span>
+          )}
+          {isSelected && <div className="w-4 h-4 rounded-full bg-green-500" />}
+          <span className={`text-xs font-bold ${
+            isBooked ? "text-gray-400" : 
+            !canBook ? "text-red-400" :
+            isSelected ? "text-green-700" : "text-gray-600"
+          }`}>{seat.seatNumber}</span>
+        </div>
+        <div className={`w-full rounded-b-xl py-1 text-center ${
+          isBooked ? "bg-gray-200" : 
+          !canBook ? "bg-red-100" :
+          isSelected ? "bg-green-500" : "bg-green-100"
+        }`}>
+          <span className={`text-xs font-semibold ${
+            isBooked ? "text-gray-500" : 
+            !canBook ? "text-red-500" :
+            isSelected ? "text-white" : "text-green-700"
+          }`}>
+            {isBooked ? "Sold" : !canBook ? "N/A" : `₹${price}`}
+          </span>
+        </div>
+      </button>
+      
+      {/* Gender compatibility message */}
+      {hasMessage && (
+        <div className={`absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-xs whitespace-nowrap z-10 ${
+          canBook ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+        }`}>
+          {seatWithGender.message}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -67,25 +106,51 @@ const SeaterSeat = ({ seat, price, onClick }) => {
   );
 };
 
-/* ── One deck column layout: 1 left | gap | 2 right, per row ──
-   Matches image: window seat alone on left, two seats on right */
-const DeckGrid = ({ deck, price, onSeatClick }) => {
+/* ── One deck column layout with gender compatibility ── */
+const DeckGrid = ({ deck, price, onSeatClick, userGender, allSeats, busType }) => {
   // group into rows of 3 (1 left + 2 right)
   const rows = [];
   for (let i = 0; i < deck.length; i += 3) rows.push(deck.slice(i, i + 3));
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-6">
       {rows.map((row, ri) => (
-        <div key={ri} className="flex items-center gap-2">
+        <div key={ri} className="flex items-start gap-2">
           {/* left seat (window) */}
-          {row[0] && <BerthSeat seat={row[0]} price={price} onClick={onSeatClick} />}
+          {row[0] && (
+            <BerthSeat 
+              seat={row[0]} 
+              price={price} 
+              onClick={onSeatClick}
+              userGender={userGender}
+              allSeats={allSeats}
+              busType={busType}
+            />
+          )}
           {/* aisle gap */}
           <div className="w-3" />
           {/* right two seats */}
           <div className="flex gap-2">
-            {row[1] && <BerthSeat seat={row[1]} price={price} onClick={onSeatClick} />}
-            {row[2] && <BerthSeat seat={row[2]} price={price} onClick={onSeatClick} />}
+            {row[1] && (
+              <BerthSeat 
+                seat={row[1]} 
+                price={price} 
+                onClick={onSeatClick}
+                userGender={userGender}
+                allSeats={allSeats}
+                busType={busType}
+              />
+            )}
+            {row[2] && (
+              <BerthSeat 
+                seat={row[2]} 
+                price={price} 
+                onClick={onSeatClick}
+                userGender={userGender}
+                allSeats={allSeats}
+                busType={busType}
+              />
+            )}
           </div>
         </div>
       ))}
@@ -105,6 +170,8 @@ const BookingSteps = ({
   handleSeatClick,
   proceedToPassengerDetails, proceedToPayment, handlePayment,
   downloadTicket,
+  selectedBoardingPoint, setSelectedBoardingPoint,
+  selectedDroppingPoint, setSelectedDroppingPoint,
 }) => {
   const navigate = useNavigate();
 
@@ -122,18 +189,55 @@ const BookingSteps = ({
             </p>
           </div>
 
+          {/* Gender Selection for Sleeper Buses */}
+          {hasDecks && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-3">
+                <FaInfoCircle className="text-blue-500" />
+                <h4 className="font-semibold text-blue-800">Gender Selection Required</h4>
+              </div>
+              <p className="text-sm text-blue-700 mb-3">
+                For sleeper buses, we ensure gender-appropriate seating. Please select your gender to view suitable seats.
+              </p>
+              <div className="flex gap-3">
+                {["male", "female", "other"].map((gender) => (
+                  <button
+                    key={gender}
+                    onClick={() => handlePassengerChange({ target: { name: "gender", value: gender } })}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold border transition ${
+                      passengerForm.gender === gender
+                        ? "bg-blue-500 text-white border-blue-500"
+                        : "bg-white text-blue-600 border-blue-300 hover:border-blue-500"
+                    }`}
+                  >
+                    {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Legend */}
           <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
             {[
               { border: "border-green-400 bg-white", label: "Available" },
               { border: "border-green-500 bg-green-500", label: "Selected" },
               { border: "border-gray-200 bg-gray-100", label: "Sold" },
+              { border: "border-red-200 bg-red-50", label: "Not Suitable" },
             ].map(({ border, label }) => (
               <div key={label} className="flex items-center gap-2">
                 <div className={`w-6 h-8 rounded-lg border-2 ${border}`}></div>
                 <span className="text-sm">{label}</span>
               </div>
             ))}
+            {hasDecks && (
+              <div className="flex items-center gap-2 ml-4">
+                <span className="text-lg">👩</span>
+                <span className="text-sm">Female</span>
+                <span className="text-lg ml-2">👨</span>
+                <span className="text-sm">Male</span>
+              </div>
+            )}
           </div>
 
           {/* Seat Grid */}
@@ -152,19 +256,35 @@ const BookingSteps = ({
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-700 text-base">Lower deck</h3>
                     <div className="w-8 h-8 rounded-full border-2 border-gray-400 flex items-center justify-center">
-                      <span className="text-gray-500 text-xs">🎯</span>
+                      <span className="text-gray-500 text-xs"></span>
                     </div>
                   </div>
-                  <DeckGrid deck={lowerDeck} price={busData.price} onSeatClick={handleSeatClick} />
+                  <DeckGrid 
+                    deck={lowerDeck} 
+                    price={busData.price} 
+                    onSeatClick={handleSeatClick}
+                    userGender={passengerForm.gender}
+                    allSeats={seats}
+                    busType={busData.busType}
+                  />
                 </div>
 
                 {/* Upper Deck */}
                 <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-700 text-base">Upper deck</h3>
-                    <div className="w-8 h-8"></div>
+                    <div className="w-8 h-8 rounded-full border-2 border-gray-400 flex items-center justify-center">
+                      <span className="text-gray-500 text-xs"></span>
+                    </div>
                   </div>
-                  <DeckGrid deck={upperDeck} price={busData.price} onSeatClick={handleSeatClick} />
+                  <DeckGrid 
+                    deck={upperDeck} 
+                    price={busData.price} 
+                    onSeatClick={handleSeatClick}
+                    userGender={passengerForm.gender}
+                    allSeats={seats}
+                    busType={busData.busType}
+                  />
                 </div>
 
               </div>
@@ -252,6 +372,52 @@ const BookingSteps = ({
                 </select>
               </div>
             </div>
+
+            {/* Boarding and Dropping Points */}
+            {(busData.boardingPoints?.length > 0 || busData.droppingPoints?.length > 0) && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {busData.boardingPoints?.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Boarding Point <span className="text-red-500">*</span></label>
+                    <select
+                      value={selectedBoardingPoint?.name || ""}
+                      onChange={(e) => {
+                        const point = busData.boardingPoints.find(p => p.name === e.target.value);
+                        setSelectedBoardingPoint(point);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
+                    >
+                      <option value="">Select boarding point</option>
+                      {busData.boardingPoints.map((point, idx) => (
+                        <option key={idx} value={point.name || point}>
+                          {typeof point === 'string' ? point : `${point.name} - ${point.time}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {busData.droppingPoints?.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Dropping Point <span className="text-red-500">*</span></label>
+                    <select
+                      value={selectedDroppingPoint?.name || ""}
+                      onChange={(e) => {
+                        const point = busData.droppingPoints.find(p => p.name === e.target.value);
+                        setSelectedDroppingPoint(point);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
+                    >
+                      <option value="">Select dropping point</option>
+                      {busData.droppingPoints.map((point, idx) => (
+                        <option key={idx} value={point.name || point}>
+                          {typeof point === 'string' ? point : `${point.name} - ${point.time}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
           <div className="mt-6 flex gap-4">

@@ -1,3 +1,5 @@
+import { formatDuration } from "../utils/timeUtils";
+
 const downloadTicket = ({ bookingId, busData, selectedSeats, passengerForm, paymentMethod, totalPrice }) => {
   // selectedSeats is now array of { id, seatNumber, deckType, seatType }
   const seatItems = selectedSeats.map(s => {
@@ -68,7 +70,7 @@ const downloadTicket = ({ bookingId, busData, selectedSeats, passengerForm, paym
                 <div class="route-arrow">→</div>
                 <div class="route-point"><div class="city">${busData.to}</div><div class="time">${busData.arrivalTime}</div></div>
               </div>
-              <div class="route-date">Travel Date: ${busData.date} | Duration: ${busData.duration || "N/A"}</div>
+              <div class="route-date">Travel Date: ${busData.date} | Duration: ${formatDuration(busData.duration) || "N/A"}</div>
             </div>
             <div class="info-grid">
               <div class="info-card">

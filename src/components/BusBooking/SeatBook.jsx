@@ -34,6 +34,8 @@ const SeatBook = () => {
   const [passengerForm, setPassengerForm] = useState({
     name: "", email: "", phone: "", age: "", gender: "male",
   });
+  const [selectedBoardingPoint, setSelectedBoardingPoint] = useState(null);
+  const [selectedDroppingPoint, setSelectedDroppingPoint] = useState(null);
 
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [paymentDetails, setPaymentDetails] = useState({
@@ -50,6 +52,31 @@ const SeatBook = () => {
     setSeatsLoading(true);
     try {
       const date = busData.date || new Date().toISOString().split("T")[0];
+      
+      // First try to get seat layout from bus model
+      const busRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/by-number/${busData.busNumber || busData._id}`);
+      if (busRes.data && busRes.data.seatLayout) {
+        const layout = busRes.data.seatLayout;
+        const busType = busRes.data.busType || "";
+        const isSleeper = busType.toLowerCase().includes("sleeper") && !busType.toLowerCase().includes("semi");
+        const isSemiSleeper = busType.toLowerCase().includes("semi");
+        const decks = isSleeper || isSemiSleeper;
+        setHasDecks(decks);
+        
+        if (decks) {
+          const lower = layout.filter(s => s.deckType === "lower");
+          const upper = layout.filter(s => s.deckType === "upper");
+          setLowerDeck(lower);
+          setUpperDeck(upper);
+          setSeats(layout);
+        } else {
+          setSeats(layout);
+        }
+        setSeatsLoading(false);
+        return;
+      }
+      
+      // Fallback to old method
       const statusRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/seat-status/${busData._id}?date=${date}`);
       const { totalSeats, bookedSeats } = statusRes.data;
       const total = totalSeats || busData.totalSeats || busData.seats || 40;
@@ -133,6 +160,12 @@ const SeatBook = () => {
 
   const proceedToPassengerDetails = () => {
     if (selectedSeats.length === 0) { alert("Please select at least one seat"); return; }
+    if (busData.boardingPoints?.length > 0 && !selectedBoardingPoint) {
+      alert("Please select a boarding point"); return;
+    }
+    if (busData.droppingPoints?.length > 0 && !selectedDroppingPoint) {
+      alert("Please select a dropping point"); return;
+    }
     setBookingStep(2);
   };
 
@@ -173,6 +206,8 @@ const SeatBook = () => {
       departureTime: busData.departureTime, arrivalTime: busData.arrivalTime,
       selectedSeats: selectedSeats.map(s => ({ id: s.id, seatNumber: String(s.seatNumber) })),
       passengers: { name: passengerForm.name, email: passengerForm.email, phone: passengerForm.phone, age: passengerForm.age ? Number(passengerForm.age) : undefined, gender: passengerForm.gender },
+      boardingPoint: selectedBoardingPoint,
+      droppingPoint: selectedDroppingPoint,
       totalAmount: totalPrice, paymentMethod,
       travelDate: busData.date || new Date().toISOString().split("T")[0],
       userId: (() => { try { return JSON.parse(localStorage.getItem("user"))?.id || null; } catch { return null; } })(),
@@ -185,7 +220,11 @@ const SeatBook = () => {
       try {
         const seatNumbers = selectedSeats.map(s => String(s.seatNumber));
         const travelDate = busData.date || new Date().toISOString().split("T")[0];
-        await axios.post(`https://bus-booking-backend-rk6y.onrender.com/api/buses/book-seats/${busData._id}`, { seatNumbers, travelDate });
+        await axios.post(`https://bus-booking-backend-rk6y.onrender.com/api/buses/book-seats/${busData._id}`, { 
+          seatNumbers, 
+          travelDate,
+          passengerGender: passengerForm.gender 
+        });
       } catch (seatErr) {
         console.warn("Seat status update failed (non-critical):", seatErr?.response?.data || seatErr.message);
       }
@@ -260,6 +299,8 @@ const SeatBook = () => {
               handleSeatClick={handleSeatClick}
               proceedToPassengerDetails={proceedToPassengerDetails} proceedToPayment={proceedToPayment} handlePayment={handlePayment}
               downloadTicket={handleDownloadTicket}
+              selectedBoardingPoint={selectedBoardingPoint} setSelectedBoardingPoint={setSelectedBoardingPoint}
+              selectedDroppingPoint={selectedDroppingPoint} setSelectedDroppingPoint={setSelectedDroppingPoint}
             />
           </div>
 
