@@ -229,6 +229,25 @@ input[type='range']::-moz-range-thumb {
   }
 }
 
+/* ── Portal modals: always on top of everything ── */
+#modal-root,
+[data-portal-modal] {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+}
+[data-portal-modal] > * {
+  pointer-events: auto;
+}
+
+/* ── Hero search: remove stacking context from animation ── */
+.hero-search {
+  isolation: auto !important;
+  transform: none !important;
+  will-change: auto !important;
+}
+
 /* ── Header dropdown animation ── */
 @keyframes fadeDropdown {
   from { opacity: 0; transform: translateY(-8px) scale(0.97); }

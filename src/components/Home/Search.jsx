@@ -144,34 +144,35 @@ const Search = () => {
         </div>
       </div>
 
-      {/* Auth popup — rendered via portal to escape stacking context */}
+      {/* Auth popup — portaled into #modal-root which is outside #root entirely */}
       {showAuthPopup && createPortal(
-        <div className="fixed inset-0 flex items-center justify-center px-4"
-          style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", zIndex: 99999 }}>
-          <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl relative">
-            <button onClick={() => setShowAuthPopup(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+        <div
+          style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", backdropFilter:"blur(4px)", zIndex:99999, display:"flex", alignItems:"center", justifyContent:"center", padding:"1rem", pointerEvents:"auto" }}
+        >
+          <div style={{ background:"#fff", borderRadius:"1rem", padding:"2rem", width:"100%", maxWidth:"360px", boxShadow:"0 25px 60px rgba(0,0,0,0.35)", position:"relative" }}>
+            <button onClick={() => setShowAuthPopup(false)} style={{ position:"absolute", top:"1rem", right:"1rem", background:"none", border:"none", cursor:"pointer", color:"#9ca3af", fontSize:"1.1rem" }}>
               <FaTimes />
             </button>
-            <div className="text-center mb-6">
-              <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <FaMapMarkerAlt className="text-orange-500 text-2xl" />
+            <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
+              <div style={{ width:"3.5rem", height:"3.5rem", background:"#fff7ed", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 1rem" }}>
+                <FaMapMarkerAlt style={{ color:"#f97316", fontSize:"1.5rem" }} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">Login to Search Buses</h3>
-              <p className="text-sm text-gray-500 mt-2">Please login or register to search and book buses.</p>
+              <h3 style={{ fontSize:"1.25rem", fontWeight:700, color:"#111827", margin:0 }}>Login to Search Buses</h3>
+              <p style={{ fontSize:"0.875rem", color:"#6b7280", marginTop:"0.5rem" }}>Please login or register to search and book buses.</p>
             </div>
-            <div className="flex flex-col gap-3">
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.75rem" }}>
               <button onClick={() => { setShowAuthPopup(false); navigate("/login"); }}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl font-bold transition">
+                style={{ width:"100%", background:"#f97316", color:"#fff", border:"none", borderRadius:"0.75rem", padding:"0.75rem", fontWeight:700, fontSize:"1rem", cursor:"pointer" }}>
                 Login
               </button>
               <button onClick={() => { setShowAuthPopup(false); navigate("/register"); }}
-                className="w-full border-2 border-orange-500 text-orange-500 hover:bg-orange-50 py-3 rounded-xl font-bold transition">
+                style={{ width:"100%", background:"#fff", color:"#f97316", border:"2px solid #f97316", borderRadius:"0.75rem", padding:"0.75rem", fontWeight:700, fontSize:"1rem", cursor:"pointer" }}>
                 Register
               </button>
             </div>
           </div>
         </div>,
-        document.body
+        document.getElementById("modal-root")
       )}
     </div>
   );
