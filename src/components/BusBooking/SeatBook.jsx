@@ -8,7 +8,6 @@ import API from "../../config/api";
 import BookingSteps from "./BookingSteps";
 import BookingSummary from "./BookingSummary";
 import downloadTicket from "./DownloadTicket";
-import { sendTicketEmail } from "../../utils/emailService";
 
 const SeatBook = () => {
   const navigate = useNavigate();
@@ -195,23 +194,19 @@ const SeatBook = () => {
     const seatNumbers = selectedSeats.map(s => String(s.seatNumber));
     const travelDate = busData.date || new Date().toISOString().split("T")[0];
 
-    // Fire API calls in background (non-blocking)
-    axios.post(`${API}/api/bookings/create`, { ...bookingData, bookingId: newBookingId })
-      .catch(err => console.warn("Booking save failed (non-critical):", err?.message));
+    // Fire API calls - await booking creation so email gets sent
+    try {
+      await axios.post(`${API}/api/bookings/create`, { ...bookingData, bookingId: newBookingId });
+    } catch (err) {
+      console.warn("Booking save failed:", err?.message);
+    }
     axios.post(`${API}/api/buses/book-seats/${busData._id}`, { seatNumbers, travelDate, passengerGender: passengerForm.gender })
-      .catch(err => console.warn("Seat update failed (non-critical):", err?.message));
+      .catch(err => console.warn("Seat update failed:", err?.message));
 
-    // Small delay so spinner is visible, then navigate to confirmation
-    setTimeout(() => {
-      setBookingId(newBookingId);
-      setBookingComplete(true);
-      setBookingStep(4);
-      setLoading(false);
-      // Send ticket email to passenger
-      sendTicketEmail({ bookingId: newBookingId, busData, selectedSeats, passengerForm, paymentMethod, totalPrice })
-        .then(r => { if (r.success) console.log('Ticket email sent'); })
-        .catch(() => {});
-    }, 1500);
+    setBookingId(newBookingId);
+    setBookingComplete(true);
+    setBookingStep(4);
+    setLoading(false);
   };
 
   // ── Download Ticket ──
