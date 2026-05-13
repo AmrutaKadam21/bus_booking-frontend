@@ -31,7 +31,6 @@ const SeatBook = () => {
   const [loading, setLoading]               = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingId, setBookingId]           = useState("");
-  const [genderWarning, setGenderWarning]   = useState(null); // { seat, adjacentGender }
 
   const [passengerForm, setPassengerForm] = useState({
     name: "", email: "", phone: "", age: "", gender: "",
@@ -124,18 +123,6 @@ const SeatBook = () => {
 
   const handleSeatClick = (seat) => {
     if (seat.status === "booked") return;
-
-    // Check gender conflict for sleeper buses
-    if (hasDecks && passengerForm.gender === "male") {
-      const seatNum = parseInt(seat.seatNumber);
-      const pairNum = seatNum % 2 === 1 ? seatNum + 1 : seatNum - 1;
-      const pairSeat = seats.find(s => s.seatNumber === String(pairNum));
-      if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "female") {
-        setGenderWarning({ seat, adjacentGender: "female" });
-        return;
-      }
-    }
-
     const updateList = (list) => list.map(s => s.id === seat.id ? { ...s, status: s.status === "selected" ? "available" : "selected" } : s);
     setSeats(prev => updateList(prev));
     if (hasDecks) {
@@ -298,39 +285,6 @@ const SeatBook = () => {
 
         </div>
       </div>
-
-      {/* Gender conflict warning modal */}
-      {genderWarning && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-            <div className="text-center mb-4">
-              <div className="text-4xl mb-2">⚠️</div>
-              <h3 className="text-lg font-bold text-gray-800">Seat Not Recommended</h3>
-              <p className="text-sm text-gray-600 mt-2">
-                The adjacent berth to seat <strong>{genderWarning.seat.seatNumber}</strong> is booked by a <strong>female passenger</strong>. Booking this seat is not recommended.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setGenderWarning(null)} className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition">Cancel</button>
-              <button
-                onClick={() => {
-                  setGenderWarning(null);
-                  const seat = genderWarning.seat;
-                  const updateList = (list) => list.map(s => s.id === seat.id ? { ...s, status: s.status === "selected" ? "available" : "selected" } : s);
-                  setSeats(prev => updateList(prev));
-                  if (seat.deckType === "lower") setLowerDeck(prev => updateList(prev));
-                  else setUpperDeck(prev => updateList(prev));
-                  setSelectedSeats(prev => {
-                    const exists = prev.find(s => s.id === seat.id);
-                    return exists ? prev.filter(s => s.id !== seat.id) : [...prev, { id: seat.id, seatNumber: seat.seatNumber, deckType: seat.deckType, seatType: seat.seatType }];
-                  });
-                }}
-                className="flex-1 py-2 rounded-lg bg-[#d84e55] text-white font-semibold hover:bg-red-600 transition"
-              >Book Anyway</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -5,106 +5,92 @@ import {
   FaCheckCircle, FaDownload, FaInfoCircle,
 } from "react-icons/fa";
 import { MdPayment, MdQrCodeScanner } from "react-icons/md";
-import { FaPersonWalking } from "react-icons/fa6";
 import { getSeatStatusWithGender } from "../../utils/genderSeatUtils";
 
 /* ── Enhanced Berth cell with gender compatibility ── */
 const BerthSeat = ({ seat, price, onClick, userGender, allSeats, busType }) => {
-  const seatWithGender = getSeatStatusWithGender(seat, userGender, allSeats, busType);
-  const isBooked = seatWithGender.status === "booked";
-  const isSelected = seatWithGender.status === "selected";
-  const canBook = seatWithGender.canBook;
-  const hasMessage = seatWithGender.message;
-  
+  const s = getSeatStatusWithGender(seat, userGender, allSeats, busType);
+  const isBooked = s.status === "booked";
+  const isSelected = s.status === "selected";
+  const gender = seat.bookedByGender;
+
   return (
-    <div className="relative">
+    <div className="flex flex-col items-center gap-1">
       <button
-        onClick={() => canBook && onClick(seat)}
-        disabled={isBooked || !canBook}
-        className={`flex flex-col items-center justify-between w-16 h-20 rounded-xl border-2 transition-all duration-150 ${
-          isBooked ? "bg-gray-100 border-gray-200 cursor-not-allowed" :
-          !canBook ? "bg-red-50 border-red-200 cursor-not-allowed" :
+        onClick={() => s.canBook && onClick(seat)}
+        disabled={isBooked || !s.canBook}
+        className={`flex flex-col items-center justify-between w-16 h-20 rounded-xl border-2 transition-all duration-150 overflow-hidden ${
+          isBooked   ? "bg-gray-100 border-gray-300 cursor-not-allowed" :
+          s.blocked  ? "bg-red-50 border-red-300 cursor-not-allowed" :
           isSelected ? "bg-white border-green-500 shadow-md" :
                        "bg-white border-green-400 hover:border-green-600 hover:shadow"
         }`}
-        title={hasMessage ? seatWithGender.message : ''}
       >
-        <div className="flex-1 flex flex-col items-center justify-center w-full gap-1">
-          {isBooked && (
-            <div className="flex items-center justify-center">
-              {seatWithGender.showGenderIcon ? (
-                <span className="text-lg">{seatWithGender.genderIcon}</span>
-              ) : (
-                <FaPersonWalking className="text-gray-300 text-lg" />
-              )}
-            </div>
-          )}
-          {!canBook && !isBooked && (
-            <span className="text-red-400 text-xs">✕</span>
-          )}
-          {isSelected && <div className="w-4 h-4 rounded-full bg-green-500" />}
+        <div className="flex-1 flex flex-col items-center justify-center w-full gap-0.5">
+          {isSelected && <div className="w-3 h-3 rounded-full bg-green-500" />}
+          {s.blocked && <span className="text-red-400 text-xs font-bold">✕</span>}
           <span className={`text-xs font-bold ${
-            isBooked ? "text-gray-400" : 
-            !canBook ? "text-red-400" :
-            isSelected ? "text-green-700" : "text-gray-600"
+            isBooked ? "text-gray-500" : s.blocked ? "text-red-400" : isSelected ? "text-green-700" : "text-gray-700"
           }`}>{seat.seatNumber}</span>
         </div>
-        <div className={`w-full rounded-b-xl py-1 text-center ${
-          isBooked ? "bg-gray-200" : 
-          !canBook ? "bg-red-100" :
+        <div className={`w-full py-1 text-center ${
+          isBooked   ? (gender === "female" ? "bg-pink-400" : gender === "male" ? "bg-blue-400" : "bg-gray-300") :
+          s.blocked  ? "bg-red-200" :
           isSelected ? "bg-green-500" : "bg-green-100"
         }`}>
-          <span className={`text-xs font-semibold ${
-            isBooked ? "text-gray-500" : 
-            !canBook ? "text-red-500" :
-            isSelected ? "text-white" : "text-green-700"
-          }`}>
-            {isBooked ? "Sold" : !canBook ? "N/A" : `₹${price}`}
-          </span>
+          {isBooked ? (
+            <span className="text-base leading-none">{s.genderIcon || "👤"}</span>
+          ) : (
+            <span className={`text-xs font-semibold ${
+              s.blocked ? "text-red-600" : isSelected ? "text-white" : "text-green-700"
+            }`}>{s.blocked ? "N/A" : `₹${price}`}</span>
+          )}
         </div>
       </button>
-      
-      {/* Gender compatibility message */}
-      {hasMessage && (
-        <div className={`absolute -bottom-8 left-1/2 transform -translate-x-1/2 px-2 py-1 rounded text-xs whitespace-nowrap z-10 ${
-          canBook ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-        }`}>
-          {seatWithGender.message}
-        </div>
+      {/* Inline message — shown directly below the seat on the page */}
+      {s.message && (
+        <p className={`text-[9px] font-semibold text-center leading-tight max-w-[64px] ${
+          s.blocked ? "text-red-500" : "text-green-600"
+        }`}>{s.message}</p>
       )}
     </div>
   );
 };
 
-/* ── Seater cell (normal bus) ── — same style, slightly shorter */
+/* ── Seater cell (normal bus) ── */
 const SeaterSeat = ({ seat, price, onClick }) => {
   const isBooked   = seat.status === "booked";
   const isSelected = seat.status === "selected";
+  const gender = seat.bookedByGender;
   return (
     <button
       onClick={() => !isBooked && onClick(seat)}
       disabled={isBooked}
-      className={`flex flex-col items-center justify-between w-16 h-16 rounded-xl border-2 transition-all duration-150 ${
-        isBooked   ? "bg-gray-100 border-gray-200 cursor-not-allowed" :
+      className={`flex flex-col items-center justify-between w-16 h-16 rounded-xl border-2 transition-all duration-150 overflow-hidden ${
+        isBooked   ? "bg-gray-100 border-gray-300 cursor-not-allowed" :
         isSelected ? "bg-white border-green-500 shadow-md" :
                      "bg-white border-green-400 hover:border-green-600 hover:shadow"
       }`}
     >
       <div className="flex-1 flex flex-col items-center justify-center w-full gap-0.5">
-        {isBooked && (
-          seat.bookedByGender === "female" ? <span className="text-base">👩</span> :
-          seat.bookedByGender === "male"   ? <span className="text-base">👨</span> :
-          <FaPersonWalking className="text-gray-300 text-sm" />
-        )}
         {isSelected && <div className="w-3 h-3 rounded-full bg-green-500" />}
-        <span className={`text-xs font-bold ${isBooked ? "text-gray-400" : isSelected ? "text-green-700" : "text-gray-600"}`}>{seat.seatNumber}</span>
+        <span className={`text-xs font-bold ${isBooked ? "text-gray-500" : isSelected ? "text-green-700" : "text-gray-700"}`}>
+          {seat.seatNumber}
+        </span>
       </div>
-      <div className={`w-full rounded-b-xl py-1 text-center ${
-        isBooked ? "bg-gray-200" : isSelected ? "bg-green-500" : "bg-green-100"
+      <div className={`w-full py-1 text-center ${
+        isBooked ? (gender === "female" ? "bg-pink-400" : gender === "male" ? "bg-blue-400" : "bg-gray-300") :
+        isSelected ? "bg-green-500" : "bg-green-100"
       }`}>
-        <span className={`text-[10px] font-semibold ${
-          isBooked ? "text-gray-500" : isSelected ? "text-white" : "text-green-700"
-        }`}>{isBooked ? "Sold" : `₹${price}`}</span>
+        {isBooked ? (
+          <span className="text-sm leading-none">
+            {gender === "female" ? "👩" : gender === "male" ? "👨" : "🚪"}
+          </span>
+        ) : (
+          <span className={`text-[10px] font-semibold ${isSelected ? "text-white" : "text-green-700"}`}>
+            {`₹${price}`}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -117,7 +103,7 @@ const DeckGrid = ({ deck, price, onSeatClick, userGender, allSeats, busType }) =
   for (let i = 0; i < deck.length; i += 3) rows.push(deck.slice(i, i + 3));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {rows.map((row, ri) => (
         <div key={ri} className="flex items-start gap-2">
           {/* left seat (window) */}
