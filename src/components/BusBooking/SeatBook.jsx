@@ -8,6 +8,7 @@ import API from "../../config/api";
 import BookingSteps from "./BookingSteps";
 import BookingSummary from "./BookingSummary";
 import downloadTicket from "./DownloadTicket";
+import { sendTicketEmail } from "../../utils/emailService";
 
 const SeatBook = () => {
   const navigate = useNavigate();
@@ -206,6 +207,10 @@ const SeatBook = () => {
       setBookingComplete(true);
       setBookingStep(4);
       setLoading(false);
+      // Send ticket email to passenger
+      sendTicketEmail({ bookingId: newBookingId, busData, selectedSeats, passengerForm, paymentMethod, totalPrice })
+        .then(r => { if (r.success) console.log('Ticket email sent'); })
+        .catch(() => {});
     }, 1500);
   };
 

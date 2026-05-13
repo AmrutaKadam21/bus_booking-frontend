@@ -8,17 +8,22 @@ import { MdPayment, MdQrCodeScanner } from "react-icons/md";
 import { getSeatStatusWithGender } from "../../utils/genderSeatUtils";
 
 /* ── Enhanced Berth cell with gender compatibility ── */
-const BerthSeat = ({ seat, price, onClick, userGender, allSeats, busType }) => {
+const BerthSeat = ({ seat, price, onClick, userGender, allSeats, busType, onBlocked }) => {
   const s = getSeatStatusWithGender(seat, userGender, allSeats, busType);
   const isBooked = s.status === "booked";
   const isSelected = s.status === "selected";
   const gender = seat.bookedByGender;
 
+  const handleClick = () => {
+    if (isBooked) return;
+    if (!s.canBook) { onBlocked && onBlocked(s.message); return; }
+    onClick(seat);
+  };
+
   return (
     <div className="flex flex-col items-center gap-1">
       <button
-        onClick={() => s.canBook && onClick(seat)}
-        disabled={isBooked || !s.canBook}
+        onClick={handleClick}
         className={`flex flex-col items-center justify-between w-16 h-20 rounded-xl border-2 transition-all duration-150 overflow-hidden ${
           isBooked   ? "bg-gray-100 border-gray-300 cursor-not-allowed" :
           s.blocked  ? "bg-red-50 border-red-300 cursor-not-allowed" :
@@ -28,31 +33,28 @@ const BerthSeat = ({ seat, price, onClick, userGender, allSeats, busType }) => {
       >
         <div className="flex-1 flex flex-col items-center justify-center w-full gap-0.5">
           {isSelected && <div className="w-3 h-3 rounded-full bg-green-500" />}
-          {s.blocked && <span className="text-red-400 text-xs font-bold">✕</span>}
+          {s.blocked && <span className="text-red-400 text-sm">🚫</span>}
           <span className={`text-xs font-bold ${
             isBooked ? "text-gray-500" : s.blocked ? "text-red-400" : isSelected ? "text-green-700" : "text-gray-700"
           }`}>{seat.seatNumber}</span>
         </div>
+        {/* Bottom bar — pink for female, blue for male, red for blocked */}
         <div className={`w-full py-1 text-center ${
-          isBooked   ? (gender === "female" ? "bg-pink-400" : gender === "male" ? "bg-blue-400" : "bg-gray-300") :
-          s.blocked  ? "bg-red-200" :
+          isBooked   ? (gender === "female" ? "bg-pink-500" : gender === "male" ? "bg-blue-500" : "bg-gray-300") :
+          s.blocked  ? "bg-red-300" :
           isSelected ? "bg-green-500" : "bg-green-100"
         }`}>
           {isBooked ? (
-            <span className="text-base leading-none">{s.genderIcon || "👤"}</span>
+            <span className="text-base leading-none">
+              {gender === "female" ? "👩" : gender === "male" ? "👨" : "👤"}
+            </span>
           ) : (
             <span className={`text-xs font-semibold ${
-              s.blocked ? "text-red-600" : isSelected ? "text-white" : "text-green-700"
+              s.blocked ? "text-white" : isSelected ? "text-white" : "text-green-700"
             }`}>{s.blocked ? "N/A" : `₹${price}`}</span>
           )}
         </div>
       </button>
-      {/* Inline message — shown directly below the seat on the page */}
-      {s.message && (
-        <p className={`text-[9px] font-semibold text-center leading-tight max-w-[64px] ${
-          s.blocked ? "text-red-500" : "text-green-600"
-        }`}>{s.message}</p>
-      )}
     </div>
   );
 };
@@ -97,8 +99,7 @@ const SeaterSeat = ({ seat, price, onClick }) => {
 };
 
 /* ── One deck column layout with gender compatibility ── */
-const DeckGrid = ({ deck, price, onSeatClick, userGender, allSeats, busType }) => {
-  // group into rows of 3 (1 left + 2 right)
+const DeckGrid = ({ deck, price, onSeatClick, userGender, allSeats, busType, onBlocked }) => {
   const rows = [];
   for (let i = 0; i < deck.length; i += 3) rows.push(deck.slice(i, i + 3));
 
@@ -106,41 +107,11 @@ const DeckGrid = ({ deck, price, onSeatClick, userGender, allSeats, busType }) =
     <div className="flex flex-col gap-8">
       {rows.map((row, ri) => (
         <div key={ri} className="flex items-start gap-2">
-          {/* left seat (window) */}
-          {row[0] && (
-            <BerthSeat 
-              seat={row[0]} 
-              price={price} 
-              onClick={onSeatClick}
-              userGender={userGender}
-              allSeats={allSeats}
-              busType={busType}
-            />
-          )}
-          {/* aisle gap */}
+          {row[0] && <BerthSeat seat={row[0]} price={price} onClick={onSeatClick} userGender={userGender} allSeats={allSeats} busType={busType} onBlocked={onBlocked} />}
           <div className="w-3" />
-          {/* right two seats */}
           <div className="flex gap-2">
-            {row[1] && (
-              <BerthSeat 
-                seat={row[1]} 
-                price={price} 
-                onClick={onSeatClick}
-                userGender={userGender}
-                allSeats={allSeats}
-                busType={busType}
-              />
-            )}
-            {row[2] && (
-              <BerthSeat 
-                seat={row[2]} 
-                price={price} 
-                onClick={onSeatClick}
-                userGender={userGender}
-                allSeats={allSeats}
-                busType={busType}
-              />
-            )}
+            {row[1] && <BerthSeat seat={row[1]} price={price} onClick={onSeatClick} userGender={userGender} allSeats={allSeats} busType={busType} onBlocked={onBlocked} />}
+            {row[2] && <BerthSeat seat={row[2]} price={price} onClick={onSeatClick} userGender={userGender} allSeats={allSeats} busType={busType} onBlocked={onBlocked} />}
           </div>
         </div>
       ))}
@@ -164,6 +135,7 @@ const BookingSteps = ({
   selectedDroppingPoint, setSelectedDroppingPoint,
 }) => {
   const navigate = useNavigate();
+  const [genderBlockMsg, setGenderBlockMsg] = React.useState("");
 
   return (
     <>
@@ -265,6 +237,7 @@ const BookingSteps = ({
                     userGender={passengerForm.gender}
                     allSeats={seats}
                     busType={busData.busType}
+                    onBlocked={setGenderBlockMsg}
                   />
                 </div>
 
@@ -283,6 +256,7 @@ const BookingSteps = ({
                     userGender={passengerForm.gender}
                     allSeats={seats}
                     busType={busData.busType}
+                    onBlocked={setGenderBlockMsg}
                   />
                 </div>
 
@@ -513,6 +487,22 @@ const BookingSteps = ({
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Gender block popup ── */}
+      {genderBlockMsg && (
+        <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.55)",backdropFilter:"blur(3px)"}}>
+          <div style={{background:"#fff",borderRadius:"1.25rem",padding:"2rem",maxWidth:"360px",width:"90%",boxShadow:"0 20px 60px rgba(0,0,0,0.3)",textAlign:"center"}}>
+            <div style={{width:"64px",height:"64px",borderRadius:"50%",background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1rem",fontSize:"2rem"}}>
+              🚫
+            </div>
+            <h3 style={{fontSize:"1.1rem",fontWeight:700,color:"#1f2937",marginBottom:"0.5rem"}}>Seat Not Available</h3>
+            <p style={{fontSize:"0.875rem",color:"#6b7280",marginBottom:"1.5rem",lineHeight:1.6}}>{genderBlockMsg}</p>
+            <button onClick={() => setGenderBlockMsg("")} style={{background:"#d84e55",color:"#fff",border:"none",borderRadius:"0.75rem",padding:"0.65rem 2rem",fontWeight:700,fontSize:"0.95rem",cursor:"pointer",width:"100%"}}>
+              OK, Got it
+            </button>
+          </div>
         </div>
       )}
 

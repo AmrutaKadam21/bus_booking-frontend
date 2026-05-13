@@ -78,11 +78,12 @@ const getHour24 = (timeStr = "") => {
 const SearchResult = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const topRef = useRef(null); // Bug 1: scroll to top ref
+  const topRef = useRef(null);
 
   const [from, setFrom] = useState(searchParams.get("from") || "");
   const [to,   setTo]   = useState(searchParams.get("to")   || "");
   const [date, setDate] = useState(searchParams.get("date") || "");
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Sync state when URL params change (e.g. new search from same page)
   useEffect(() => {
@@ -426,11 +427,7 @@ const SearchResult = () => {
                     <button
                       onClick={() => {
                         const token = localStorage.getItem("token");
-                        if (!token) {
-                          alert("Please login or register to book a ticket.");
-                          navigate("/register");
-                          return;
-                        }
+                        if (!token) { setShowLoginModal(true); return; }
                         navigate("/seatbook", { state: { busData: {
                           _id: bus.id, busName: bus.name, busNumber: bus.busNumber,
                           busType: bus.type, from, to, date,
@@ -509,6 +506,32 @@ const SearchResult = () => {
           ))}
         </div>
       </div>
+      {/* ── Login required modal ── */}
+      {showLoginModal && (
+        <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:"1rem",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}}>
+          <div style={{background:"#fff",borderRadius:"1.5rem",padding:"2.5rem 2rem",maxWidth:"380px",width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.35)",textAlign:"center",position:"relative"}}>
+            <button onClick={() => setShowLoginModal(false)} style={{position:"absolute",top:"1rem",right:"1rem",background:"#f3f4f6",border:"none",borderRadius:"50%",width:"32px",height:"32px",cursor:"pointer",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <FaTimes style={{color:"#6b7280"}} />
+            </button>
+            <div style={{width:"72px",height:"72px",borderRadius:"50%",background:"linear-gradient(135deg,#f97316,#dc2626)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1.25rem",fontSize:"2rem",boxShadow:"0 8px 24px rgba(249,115,22,0.4)"}}>
+              🎫
+            </div>
+            <h3 style={{fontSize:"1.3rem",fontWeight:800,color:"#111827",marginBottom:"0.5rem"}}>Login to Book</h3>
+            <p style={{fontSize:"0.9rem",color:"#6b7280",marginBottom:"0.25rem"}}>You need to be logged in to book a bus ticket.</p>
+            <p style={{fontSize:"0.85rem",color:"#9ca3af",marginBottom:"2rem"}}>Join thousands of happy travellers 🚀</p>
+            <div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
+              <button onClick={() => { setShowLoginModal(false); navigate("/login"); }}
+                style={{background:"linear-gradient(135deg,#f97316,#dc2626)",color:"#fff",border:"none",borderRadius:"0.875rem",padding:"0.85rem",fontWeight:700,fontSize:"1rem",cursor:"pointer",boxShadow:"0 4px 16px rgba(249,115,22,0.35)"}}>
+                🔑 Login Now
+              </button>
+              <button onClick={() => { setShowLoginModal(false); navigate("/register"); }}
+                style={{background:"#fff",color:"#f97316",border:"2px solid #f97316",borderRadius:"0.875rem",padding:"0.85rem",fontWeight:700,fontSize:"1rem",cursor:"pointer"}}>
+                ✨ Create Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
