@@ -189,31 +189,21 @@ const SeatBook = () => {
       userId: (() => { try { return JSON.parse(localStorage.getItem("user"))?.id || null; } catch { return null; } })(),
     };
 
-    try {
-      const res = await axios.post(`${API}/api/bookings/create`, bookingData);
-      const newBookingId = res.data?.data?.bookingId || "BK" + Date.now().toString(36).toUpperCase();
+    // Generate booking ID immediately and show confirmation without waiting for API
+    const newBookingId = "BK" + Date.now().toString(36).toUpperCase();
+    setBookingId(newBookingId);
+    setBookingComplete(true);
+    setBookingStep(4);
+    setLoading(false);
 
-      try {
-        const seatNumbers = selectedSeats.map(s => String(s.seatNumber));
-        const travelDate = busData.date || new Date().toISOString().split("T")[0];
-        await axios.post(`${API}/api/buses/book-seats/${busData._id}`, { seatNumbers, travelDate, passengerGender: passengerForm.gender });
-      } catch (seatErr) {
-        console.warn("Seat status update failed (non-critical):", seatErr?.response?.data || seatErr.message);
-      }
+    // Fire API calls in background (non-blocking)
+    axios.post(`${API}/api/bookings/create`, { ...bookingData, bookingId: newBookingId })
+      .catch(err => console.warn("Booking save failed (non-critical):", err?.message));
 
-      setBookingId(newBookingId);
-      setBookingComplete(true);
-      setBookingStep(4);
-    } catch (error) {
-      console.error("Booking API error:", error);
-      // Still proceed to confirmation with a local booking ID
-      const fallbackId = "BK" + Date.now().toString(36).toUpperCase();
-      setBookingId(fallbackId);
-      setBookingComplete(true);
-      setBookingStep(4);
-    } finally {
-      setLoading(false);
-    }
+    const seatNumbers = selectedSeats.map(s => String(s.seatNumber));
+    const travelDate = busData.date || new Date().toISOString().split("T")[0];
+    axios.post(`${API}/api/buses/book-seats/${busData._id}`, { seatNumbers, travelDate, passengerGender: passengerForm.gender })
+      .catch(err => console.warn("Seat update failed (non-critical):", err?.message));
   };
 
   // ── Download Ticket ──
