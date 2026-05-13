@@ -91,7 +91,11 @@ const SeaterSeat = ({ seat, price, onClick }) => {
       }`}
     >
       <div className="flex-1 flex flex-col items-center justify-center w-full gap-0.5">
-        {isBooked && <FaPersonWalking className="text-gray-300 text-sm" />}
+        {isBooked && (
+          seat.bookedByGender === "female" ? <span className="text-base">👩</span> :
+          seat.bookedByGender === "male"   ? <span className="text-base">👨</span> :
+          <FaPersonWalking className="text-gray-300 text-sm" />
+        )}
         {isSelected && <div className="w-3 h-3 rounded-full bg-green-500" />}
         <span className={`text-xs font-bold ${isBooked ? "text-gray-400" : isSelected ? "text-green-700" : "text-gray-600"}`}>{seat.seatNumber}</span>
       </div>
@@ -191,26 +195,30 @@ const BookingSteps = ({
 
           {/* Gender Selection for Sleeper Buses */}
           {hasDecks && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className={`mb-6 p-4 rounded-lg border ${
+              !passengerForm.gender ? "bg-yellow-50 border-yellow-300" : "bg-blue-50 border-blue-200"
+            }`}>
               <div className="flex items-center gap-2 mb-3">
-                <FaInfoCircle className="text-blue-500" />
-                <h4 className="font-semibold text-blue-800">Gender Selection Required</h4>
+                <FaInfoCircle className={!passengerForm.gender ? "text-yellow-500" : "text-blue-500"} />
+                <h4 className={`font-semibold ${ !passengerForm.gender ? "text-yellow-800" : "text-blue-800"}`}>
+                  {!passengerForm.gender ? "⚠️ Select Your Gender to Continue" : "Gender Selected"}
+                </h4>
               </div>
-              <p className="text-sm text-blue-700 mb-3">
-                For sleeper buses, we ensure gender-appropriate seating. Please select your gender to view suitable seats.
+              <p className={`text-sm mb-3 ${!passengerForm.gender ? "text-yellow-700" : "text-blue-700"}`}>
+                For sleeper buses, we ensure gender-appropriate seating. Select your gender to see available seats.
               </p>
               <div className="flex gap-3">
-                {["male", "female", "other"].map((gender) => (
+                {[{ val: "male", icon: "👨" }, { val: "female", icon: "👩" }, { val: "other", icon: "🧑" }].map(({ val, icon }) => (
                   <button
-                    key={gender}
-                    onClick={() => handlePassengerChange({ target: { name: "gender", value: gender } })}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold border transition ${
-                      passengerForm.gender === gender
+                    key={val}
+                    onClick={() => handlePassengerChange({ target: { name: "gender", value: val } })}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold border transition flex items-center gap-2 ${
+                      passengerForm.gender === val
                         ? "bg-blue-500 text-white border-blue-500"
                         : "bg-white text-blue-600 border-blue-300 hover:border-blue-500"
                     }`}
                   >
-                    {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                    <span>{icon}</span>{val.charAt(0).toUpperCase() + val.slice(1)}
                   </button>
                 ))}
               </div>
@@ -240,8 +248,13 @@ const BookingSteps = ({
             )}
           </div>
 
-          {/* Seat Grid */}
-          {seatsLoading ? (
+          {/* Seat Grid — blocked until gender selected for sleeper */}
+          {hasDecks && !passengerForm.gender ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <span className="text-5xl mb-4">🚌</span>
+              <p className="text-gray-500 font-semibold">Please select your gender above to view available seats</p>
+            </div>
+          ) : seatsLoading ? (
             <div className="flex items-center justify-center py-16">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#d84e55]"></div>
               <p className="ml-3 text-gray-500">Loading seat layout...</p>
@@ -366,6 +379,7 @@ const BookingSteps = ({
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Gender</label>
                 <select name="gender" value={passengerForm.gender} onChange={handlePassengerChange} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55]">
+                  <option value="">Select gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>

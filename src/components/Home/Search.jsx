@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { FaMapMarkerAlt, FaSearch, FaTimes } from "react-icons/fa";
 import { MdSwapHoriz } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
@@ -143,11 +144,11 @@ const Search = () => {
         </div>
       </div>
 
-      {/* Auth popup */}
-      {showAuthPopup && (
+      {/* Auth popup — rendered via portal to escape stacking context */}
+      {showAuthPopup && createPortal(
         <div className="fixed inset-0 flex items-center justify-center px-4"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)", zIndex: 99999 }}>
-          <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl relative" style={{ zIndex: 100000 }}>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl relative">
             <button onClick={() => setShowAuthPopup(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
               <FaTimes />
             </button>
@@ -169,7 +170,8 @@ const Search = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -25,24 +25,16 @@ export const isValidDepartureTime = (departureTime, searchDate) => {
   if (!departureTime || !searchDate) return false;
   
   const today = new Date().toISOString().split('T')[0];
-  const searchDateStr = searchDate;
-  
-  // If search date is not today, show all buses
-  if (searchDateStr !== today) return true;
+  if (searchDate !== today) return true;
   
   const departureMinutes = parseTimeToMinutes(departureTime);
-  const currentMinutes = getCurrentTimeInMinutes();
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
   
-  // Add 60 minutes (1 hour) buffer to current time
-  const minimumDepartureTime = currentMinutes + 60;
+  // Only treat as next-day if current time is after 10 PM AND departure is before 6 AM
+  if (now.getHours() >= 22 && departureMinutes < 360) return true;
   
-  // Handle next day departure (e.g., current time 11 PM, departure 1 AM next day)
-  if (departureMinutes < currentMinutes) {
-    // Assume it's next day departure, so it's valid
-    return true;
-  }
-  
-  return departureMinutes >= minimumDepartureTime;
+  return departureMinutes >= currentMinutes + 60;
 };
 
 export const getTimeFilterMessage = () => {

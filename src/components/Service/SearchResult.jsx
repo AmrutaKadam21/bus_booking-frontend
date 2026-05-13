@@ -32,8 +32,11 @@ const isValidDeparture = (departureTime, searchDate) => {
     return h * 60 + m;
   };
   const depMins = parseMin(departureTime);
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  if (depMins < nowMins) return true; // next-day departure
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  // Only treat as next-day if current time is after 10 PM AND departure is before 6 AM
+  if (now.getHours() >= 22 && depMins < 360) return true;
+  // Hide buses that have already departed or depart within 1 hour
   return depMins >= nowMins + 60;
 };
 
