@@ -31,7 +31,6 @@ const Search = () => {
   const isLoggedIn = () => !!localStorage.getItem("user");
 
   const handleFromFocus = () => {
-    if (!isLoggedIn()) { setShowAuthPopup(true); return; }
     setShowFrom(true);
   };
 
@@ -39,7 +38,6 @@ const Search = () => {
     if (!from.trim()) { alert("Please enter the departure city (From)"); return; }
     if (!to.trim())   { alert("Please enter the destination city (To)"); return; }
     if (!date)        { alert("Please select a departure date"); return; }
-    if (!isLoggedIn()) { setShowAuthPopup(true); return; }
     navigate(`/s-to-d?from=${from}&to=${to}&date=${date}`);
   };
 
@@ -48,15 +46,8 @@ const Search = () => {
       <div className="bg-gray-200 rounded-[30px] sm:rounded-[40px] px-4 sm:px-6 py-5 sm:py-6 w-full max-w-6xl shadow-md">
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-4">
-<<<<<<< HEAD
-          <span>BUSES</span>
-          <span className="text-gray-700 text-xs sm:text-sm">
-            INDIA'S FASTEST BOOKING PLATFORM
-          </span>
-=======
           <span>🚌 BUSES</span>
           <span className="text-gray-700 text-xs sm:text-sm">INDIA'S FASTEST BOOKING PLATFORM</span>
->>>>>>> 81cdd239ad8c1cde6cb8377ceb8531a3e1cba56f
         </div>
 
         <div className="border-t border-gray-300 mb-4" />
@@ -73,7 +64,7 @@ const Search = () => {
                 value={from}
                 placeholder="Enter city"
                 onFocus={handleFromFocus}
-                onChange={(e) => { if (!isLoggedIn()) { setShowAuthPopup(true); return; } setFrom(e.target.value); setShowFrom(true); }}
+                onChange={(e) => { setFrom(e.target.value); setShowFrom(true); }}
                 onBlur={() => setTimeout(() => setShowFrom(false), 150)}
                 className="bg-transparent outline-none w-full font-semibold text-lg"
               />
