@@ -149,7 +149,8 @@ const ServiceCategories = () => {
                   type="button"
                   onClick={() => {
                     setActiveService(null);
-                    navigate("/");
+                    navigate("/#search");
+                    setTimeout(() => document.getElementById("home-search")?.scrollIntoView({ behavior: "smooth" }), 100);
                   }}
                   className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl py-3 font-bold shadow-lg"
                 >

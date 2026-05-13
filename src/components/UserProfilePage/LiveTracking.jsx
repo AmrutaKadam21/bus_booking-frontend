@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import API from "../../config/api";
 
 export default function LiveTracking() {
   const [busId, setBusId] = useState("");
@@ -14,9 +15,7 @@ export default function LiveTracking() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get(
-          `https://bus-booking-backend-rk6y.onrender.com/api/buses/location/${trackId}`
-        );
+        const res = await axios.get(`${API}/api/buses/location/${trackId}`);
 
         const { lat, lng } = res.data.location;
 

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API from "../../config/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -21,11 +22,12 @@ const Login = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post("https://bus-booking-backend-rk6y.onrender.com/api/auth/login", form);
+      const res = await axios.post(`${API}/api/auth/login`, form);
 
       localStorage.setItem("token",     res.data.token);
       localStorage.setItem("user",      JSON.stringify(res.data.user));
       localStorage.setItem("loginTime", Date.now().toString());
+      sessionStorage.setItem("sessionActive", "1"); // keep session alive on refresh
       window.dispatchEvent(new Event("authChange"));
 
       const role = res.data.user?.role || "user";

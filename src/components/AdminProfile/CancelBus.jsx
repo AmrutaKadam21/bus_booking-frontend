@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import API from "../../config/api";
 
 export default function BusAdmin() {
   const [buses, setBuses] = useState([]);
@@ -16,7 +17,7 @@ export default function BusAdmin() {
   const fetchBuses = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("https://bus-booking-backend-rk6y.onrender.com/api/buses");
+      const res = await axios.get(`${API}/api/buses`);
       setBuses(res.data);
       setLoading(false);
     } catch (error) {
@@ -33,7 +34,7 @@ export default function BusAdmin() {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`https://bus-booking-backend-rk6y.onrender.com/api/buses/delete/${id}`);
+      await axios.delete(`${API}/api/buses/delete/${id}`);
       alert("Bus cancelled successfully");
       fetchBuses();
     } catch (error) {

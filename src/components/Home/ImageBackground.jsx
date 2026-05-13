@@ -24,7 +24,7 @@ const ImageBackground = () => {
   const textY       = scrollY * 0.2;
 
   return (
-    <div className="relative w-full min-h-screen flex flex-col overflow-hidden bg-black">
+    <div className="relative w-full min-h-screen flex flex-col bg-black">
 
       {/* ── Dark fallback shown while video loads ── */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-950 via-slate-900 to-orange-950" />
@@ -174,7 +174,7 @@ const ImageBackground = () => {
       </div>
 
       {/* ── Search bar (overlapping) ── */}
-      <div ref={sectionRef} className="relative z-30 w-full -mt-32 md:-mt-24 hero-search">
+      <div ref={sectionRef} id="home-search" className="relative z-[200] w-full -mt-32 md:-mt-24 hero-search">
         <Search />
       </div>
     </div>

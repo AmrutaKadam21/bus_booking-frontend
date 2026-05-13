@@ -8,7 +8,7 @@ export const doLogout = (navigate) => {
   localStorage.removeItem("user");
   localStorage.removeItem("token");
   localStorage.removeItem("loginTime");
-  // Notify Header (and any listener) instantly in the same tab
+  sessionStorage.removeItem("sessionActive");
   window.dispatchEvent(new Event("authChange"));
   if (navigate) navigate("/");
 };

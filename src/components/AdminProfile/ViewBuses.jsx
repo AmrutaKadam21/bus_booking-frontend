@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import API from "../../config/api";
 
 export default function ViewBuses() {
   const [buses, setBuses] = useState([]);
@@ -10,7 +11,7 @@ export default function ViewBuses() {
 
   const fetchBuses = async () => {
     try {
-      const res = await axios.get("https://bus-booking-backend-rk6y.onrender.com/api/buses");
+      const res = await axios.get(`${API}/api/buses`);
       console.log("BUS DATA FROM API:", res.data);
       console.log("FIRST BUS KEYS:", res.data[0] ? Object.keys(res.data[0]) : "no data");
       setBuses(res.data);

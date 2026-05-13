@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-const API = "https://bus-booking-backend-rk6y.onrender.com";
+import API from "../../config/api";
 
 const fmt = (d) =>
   new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });

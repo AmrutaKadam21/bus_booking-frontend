@@ -1,978 +1,241 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  FaBus,
-  FaWifi,
-  FaSnowflake,
-  FaPlug,
-  FaShieldAlt,
-  FaSlidersH,
-  FaTimes,
-  FaMapMarkerAlt,
-  FaSearch,
-  FaChevronDown,
-  FaChevronUp,
-  FaTv,
-  FaSuitcase,
+  FaBus, FaWifi, FaSnowflake, FaPlug, FaShieldAlt,
+  FaSlidersH, FaTimes, FaChevronDown, FaChevronUp,
+  FaTv, FaSuitcase,
 } from "react-icons/fa";
-import { MdSwapHoriz } from "react-icons/md";
-import { formatDuration } from "../../utils/timeUtils";
-import { requireAuth } from "../../utils/auth";
-import { isValidDepartureTime, getTimeFilterMessage } from "../../utils/timeFilter";
+import SearchBar, { formatDate } from "./SearchBar";
+import SearchFilters from "./SearchFilters";
+import API from "../../config/api";
 
-const cities = [
-  "Mumbai", "Pune", "Nashik", "Nagpur", "Kolhapur",
-  "Aurangabad", "Solapur", "Satara", "Ahmednagar",
-  "Delhi", "Bangalore", "Hyderabad", "Chennai",
-];
+// ── Duration: mins → "Xh Ym" ──
+const fmtDuration = (raw) => {
+  if (!raw || raw === "N/A") return "N/A";
+  const mins = parseInt(String(raw).replace(/[^\d]/g, ""), 10);
+  if (isNaN(mins)) return raw;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h === 0 ? `${m}m` : m === 0 ? `${h}h` : `${h}h ${m}m`;
+};
+
+// ── Time filter: only buses departing 1+ hour from now (today only) ──
+const isValidDeparture = (departureTime, searchDate) => {
+  const today = new Date().toISOString().split("T")[0];
+  if (searchDate !== today) return true; // future date → show all
+  if (!departureTime) return false;
+  const parseMin = (t) => {
+    const [timePart, period] = t.split(" ");
+    let [h, m] = timePart.split(":").map(Number);
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+  };
+  const depMins = parseMin(departureTime);
+  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+  if (depMins < nowMins) return true; // next-day departure
+  return depMins >= nowMins + 60;
+};
+
+const getMinDepartureLabel = () => {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
+};
 
 const amenityIcon = (a) => {
-  if (a === "WiFi") return <FaWifi className="text-blue-400" />;
-  if (a === "AC") return <FaSnowflake className="text-cyan-400" />;
+  if (a === "WiFi")           return <FaWifi className="text-blue-400" />;
+  if (a === "AC")             return <FaSnowflake className="text-cyan-400" />;
   if (a === "Charging Point") return <FaPlug className="text-yellow-500" />;
-  if (a === "Entertainment") return <FaTv className="text-pink-400" />;
-  if (a === "Luggage") return <FaSuitcase className="text-green-500" />;
-  if (a === "Blanket") return <FaShieldAlt className="text-purple-400" />;
+  if (a === "Entertainment")  return <FaTv className="text-pink-400" />;
+  if (a === "Luggage")        return <FaSuitcase className="text-green-500" />;
+  if (a === "Blanket")        return <FaShieldAlt className="text-purple-400" />;
   return null;
 };
 
-// Filter Component with real-time filtering
-const FilterContent = ({ filters, setFilters, onClearAll, availableBusesCount, maxPrice }) => {
-  const toggleType = (item) => {
-    setFilters(prev => ({
-      ...prev,
-      busTypes: prev.busTypes.includes(item)
-        ? prev.busTypes.filter(x => x !== item)
-        : [...prev.busTypes, item]
-    }));
-  };
+const normalizeBusType = (raw = "") => {
+  const t = raw.toLowerCase();
+  // IMPORTANT: check "non ac" / "non-ac" BEFORE checking "ac" alone
+  if (t.includes("non ac") || t.includes("non-ac") || t.includes("nonac")) return "Non AC";
+  if (t.includes("ac") && t.includes("sleeper")) return "AC Sleeper";
+  if (t.includes("ac"))      return "AC";
+  if (t.includes("sleeper")) return "Sleeper";
+  if (t.includes("seater"))  return "Seater";
+  return raw;
+};
 
-  const toggleTime = (item) => {
-    setFilters(prev => ({
-      ...prev,
-      departureTimes: prev.departureTimes.includes(item)
-        ? prev.departureTimes.filter(x => x !== item)
-        : [...prev.departureTimes, item]
-    }));
-  };
-
-  const handlePriceRange = (e) => {
-    setFilters(prev => ({
-      ...prev,
-      priceRange: { ...prev.priceRange, max: parseInt(e.target.value) }
-    }));
-  };
-
-  const handleRatingChange = (rating) => {
-    setFilters(prev => ({
-      ...prev,
-      minRating: rating
-    }));
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Filter Header */}
-      <div className="flex justify-between items-center">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-          Filters ({availableBusesCount} buses)
-        </h4>
-        <button
-          onClick={onClearAll}
-          className="text-xs text-[#d84e55] hover:underline font-semibold"
-        >
-          Clear All
-        </button>
-      </div>
-
-      {/* BUS TYPE */}
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Bus Type</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {["AC", "Non AC", "Seater", "Sleeper"].map((item) => (
-            <button
-              key={item}
-              onClick={() => toggleType(item)}
-              className={`py-2 px-3 rounded-lg text-xs font-semibold border transition
-                ${filters.busTypes.includes(item)
-                  ? "bg-[#d84e55] text-white border-[#d84e55]"
-                  : "bg-gray-50 text-gray-600 border-gray-200 hover:border-[#d84e55] hover:text-[#d84e55]"
-                }`}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="border-t border-gray-100" />
-
-      {/* PRICE RANGE */}
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-          Price Range (₹{filters.priceRange.min} - ₹{filters.priceRange.max})
-        </h4>
-        <input
-          type="range"
-          min="0"
-          max={maxPrice}
-          value={filters.priceRange.max}
-          onChange={handlePriceRange}
-          className="w-full accent-[#d84e55]"
-        />
-        <div className="flex justify-between text-xs font-semibold text-gray-500 mt-1">
-          <span>₹0</span>
-          <span>₹{maxPrice}</span>
-        </div>
-      </div>
-
-      <div className="border-t border-gray-100" />
-
-      {/* DEPARTURE TIME */}
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Departure Time</h4>
-        <div className="grid grid-cols-2 gap-2">
-          {["Before 10 AM", "10 AM–5 PM", "5 PM–11 PM", "After 11 PM"].map((t) => (
-            <button
-              key={t}
-              onClick={() => toggleTime(t)}
-              className={`py-2 px-2 rounded-lg text-xs font-semibold border transition text-center
-                ${filters.departureTimes.includes(t)
-                  ? "bg-[#d84e55] text-white border-[#d84e55]"
-                  : "bg-gray-50 text-gray-600 border-gray-200 hover:border-[#d84e55] hover:text-[#d84e55]"
-                }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="border-t border-gray-100" />
-
-      {/* RATINGS */}
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Min Rating</h4>
-        <div className="flex gap-2">
-          {[3, 4, 4.5].map((r) => (
-            <button
-              key={r}
-              onClick={() => handleRatingChange(r)}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition
-                ${filters.minRating === r
-                  ? "bg-[#d84e55] text-white border-[#d84e55]"
-                  : "bg-gray-50 text-gray-600 border-gray-200 hover:border-[#d84e55] hover:text-[#d84e55]"
-                }`}
-            >
-              {r}★
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+const getHour24 = (timeStr = "") => {
+  const [hRaw] = timeStr.split(":");
+  let h = parseInt(hRaw, 10);
+  const isPM = timeStr.toUpperCase().includes("PM");
+  if (isPM && h !== 12) h += 12;
+  if (!isPM && h === 12) h = 0;
+  return h;
 };
 
 const SearchResult = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const topRef = useRef(null); // Bug 1: scroll to top ref
 
   const [from, setFrom] = useState(searchParams.get("from") || "");
-  const [to, setTo] = useState(searchParams.get("to") || "");
+  const [to,   setTo]   = useState(searchParams.get("to")   || "");
   const [date, setDate] = useState(searchParams.get("date") || "");
 
-  const [allBuses, setAllBuses] = useState([]);
+  // Sync state when URL params change (e.g. new search from same page)
+  useEffect(() => {
+    const f = searchParams.get("from") || "";
+    const t = searchParams.get("to")   || "";
+    const d = searchParams.get("date") || "";
+    setFrom(f); setTo(t); setDate(d);
+  }, [searchParams]);
+
+  const [allBuses,      setAllBuses]      = useState([]);
   const [filteredBuses, setFilteredBuses] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [expandedCard,  setExpandedCard]  = useState(null);
+  const [showFilter,    setShowFilter]    = useState(false);
+  const [sortBy,        setSortBy]        = useState("");
 
-  const [expandedCard, setExpandedCard] = useState(null);
-  const [showFilter, setShowFilter] = useState(false);
-  const [showFrom, setShowFrom] = useState(false);
-  const [showTo, setShowTo] = useState(false);
-  const [sortBy, setSortBy] = useState("");
-
-  // Filter state
   const [filters, setFilters] = useState({
-    busTypes: [],
-    departureTimes: [],
-    priceRange: { min: 0, max: 99999 },
-    minRating: 0
+    busTypes: [], departureTimes: [],
+    priceRange: { min: 0, max: 5000 }, minRating: 0,
   });
 
-  // Fetch buses
-  useEffect(() => {
-    if (!from || !to) {
-      setAllBuses([]);
-      setFilteredBuses([]);
-      return;
-    }
+  // Bug 1: scroll page to top on mount
+  useEffect(() => { topRef.current?.scrollIntoView({ behavior: "instant" }); }, []);
 
+  // Fetch buses whenever from/to changes
+  useEffect(() => {
+    if (!from || !to) { setAllBuses([]); setFilteredBuses([]); return; }
     const fetchBuses = async () => {
       try {
         setLoading(true);
+        setAllBuses([]); setFilteredBuses([]);
         const res = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/api/buses/search-buses?origin=${from}&destination=${to}`
+          `${API}/api/buses/search-buses`,
+          { params: { origin: from.trim(), destination: to.trim() } }
         );
+        // Handle both { data: [...] } and plain array responses
+        const raw = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
 
-        console.log("API RESPONSE:", res.data);
-
-        if (!res.data || !res.data.data) {
-          setAllBuses([]);
-          setFilteredBuses([]);
-          return;
+        if (raw.length === 0) {
+          setAllBuses([]); setFilteredBuses([]); return;
         }
+        const formatted = raw.map((bus) => ({
+          id:         bus._id,
+          name:       bus.busName,
+          busNumber:  bus.busNumber || "",
+          type:       normalizeBusType(bus.busType),
+          price:      Number(bus.price) || 0,
+          rating:     bus.rating || 4,
+          departure:  bus.departureTime || "",
+          arrival:    bus.arrivalTime   || "",
+          duration:   fmtDuration(bus.travelDurationMins),
+          amenities:  bus.amenities      || [],
+          boarding:   bus.boardingPoints || [],
+          dropping:   bus.droppingPoints || [],
+          seats:      bus.seats || 40,
+          totalSeats: bus.seats || 40,
+          availableSeats: bus.availableSeats ?? (bus.seats || 40),
+        }));
 
-        const formatted = res.data.data.map((bus) => {
-          // Normalize bus type for consistent filtering
-          let normalizedType = bus.busType || "";
-          
-          // Convert various formats to standard types
-          if (normalizedType.toLowerCase().includes("ac") && normalizedType.toLowerCase().includes("sleeper")) {
-            normalizedType = "AC Sleeper";
-          } else if (normalizedType.toLowerCase().includes("ac")) {
-            normalizedType = "AC";
-          } else if (normalizedType.toLowerCase().includes("non ac") || normalizedType.toLowerCase().includes("non-ac")) {
-            normalizedType = "Non AC";
-          } else if (normalizedType.toLowerCase().includes("seater")) {
-            normalizedType = "Seater";
-          } else if (normalizedType.toLowerCase().includes("sleeper")) {
-            normalizedType = "Sleeper";
-          }
-          
-          console.log("Bus:", bus.busName, "Original Type:", bus.busType, "Normalized Type:", normalizedType);
-          
-          return {
-            id: bus._id,
-            name: bus.busName,
-            busNumber: bus.busNumber || "",
-            type: normalizedType,
-            originalType: bus.busType,
-            price: bus.price,
-            rating: bus.rating || 4,
-            departure: bus.departureTime,
-            arrival: bus.arrivalTime,
-            duration: bus.travelDurationMins ? `${bus.travelDurationMins} mins` : "N/A",
-            amenities: bus.amenities || [],
-            boarding: bus.boardingPoints || [],
-            dropping: bus.droppingPoints || [],
-            seats: bus.seats || 40,
-            totalSeats: bus.seats || 40,
-            seatLayout: bus.seatLayout || [],
-          };
-        });
+        // ── Time filter: hide buses departing within 1 hour (today only) ──
+        const timeFiltered = formatted.filter(b => isValidDeparture(b.departure, date));
 
-        console.log("Formatted Buses:", formatted);
-        
-        // Filter buses by departure time (1 hour from current time)
-        const timeFilteredBuses = formatted.filter(bus => 
-          isValidDepartureTime(bus.departure, date)
-        );
-        
-        console.log(`Filtered ${formatted.length} buses to ${timeFilteredBuses.length} (time filter applied)`);
-        
-        // Set time filter info for today's searches
-        const today = new Date().toISOString().split('T')[0];
-        if (date === today) {
-          setTimeFilterInfo(getTimeFilterMessage());
-        } else {
-          setTimeFilterInfo(null);
-        }
-        const maxP = Math.max(...timeFilteredBuses.map(b => b.price), 0);
-        setFilters(prev => ({ ...prev, priceRange: { ...prev.priceRange, max: maxP } }));
-        setAllBuses(timeFilteredBuses);
-        setFilteredBuses(timeFilteredBuses);
-      } catch (error) {
-        console.error("Error fetching buses:", error);
-        setAllBuses([]);
-        setFilteredBuses([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBuses();
-  }, [from, to]);
-
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...allBuses];
-
-    // Bus type filter
-    if (filters.busTypes.length > 0) {
-      filtered = filtered.filter(bus => {
-        return filters.busTypes.some(filterType => {
-          if (filterType === "AC" && (bus.type.includes("AC") || bus.originalType.toLowerCase().includes("ac"))) return true;
-          if (filterType === "Non AC" && (bus.type.includes("Non AC") || bus.originalType.toLowerCase().includes("non"))) return true;
-          if (filterType === "Seater" && (bus.type.includes("Seater") || bus.originalType.toLowerCase().includes("seater"))) return true;
-          if (filterType === "Sleeper" && (bus.type.includes("Sleeper") || bus.originalType.toLowerCase().includes("sleeper"))) return true;
-          return false;
-        });
-      });
-    }
-
-    // Price filter
-    filtered = filtered.filter(bus => bus.price >= filters.priceRange.min && bus.price <= filters.priceRange.max);
-
-    // Time filter
-    if (filters.departureTimes.length > 0) {
-      filtered = filtered.filter(bus => {
-        const time = bus.departure;
-        const hour = parseInt(time.split(":")[0]);
-        const isAM = time.includes("AM");
-        const isPM = time.includes("PM");
-        let hour24 = hour;
-        if (isPM && hour !== 12) hour24 += 12;
-        if (isAM && hour === 12) hour24 = 0;
-
-        return filters.departureTimes.some(timeSlot => {
-          if (timeSlot === "Before 10 AM" && hour24 < 10) return true;
-          if (timeSlot === "10 AM–5 PM" && hour24 >= 10 && hour24 < 17) return true;
-          if (timeSlot === "5 PM–11 PM" && hour24 >= 17 && hour24 < 23) return true;
-          if (timeSlot === "After 11 PM" && (hour24 >= 23 || hour24 < 6)) return true;
-          return false;
-        });
-      });
-    }
-
-    // Rating filter
-    if (filters.minRating > 0) {
-      filtered = filtered.filter(bus => bus.rating >= filters.minRating);
-    }
-
-    // Sort
-    if (sortBy === "price-low") filtered.sort((a, b) => a.price - b.price);
-    else if (sortBy === "price-high") filtered.sort((a, b) => b.price - a.price);
-    else if (sortBy === "departure") filtered.sort((a, b) => a.departure.localeCompare(b.departure));
-    else if (sortBy === "rating") filtered.sort((a, b) => b.rating - a.rating);
-
-    setFilteredBuses(filtered);
-  }, [allBuses, filters, sortBy]);
-
-  const handleSearch = () => {
-    if (!from || !to) {
-      alert("Please select both departure and destination cities");
-      return;
-    }
-    const params = new URLSearchParams({ from, to, date });
-    navigate(`/s-to-d?${params.toString()}`);
-  };
-
-  const swapCities = () => {
-    const temp = from;
-    setFrom(to);
-    setTo(temp);
-  };
-
-  const clearAllFilters = () => {
-    setFilters({
-      busTypes: [],
-      departureTimes: [],
-      priceRange: { min: 0, max: Math.max(...allBuses.map(b => b.price), 99999) },
-      minRating: 0
-    });
-  };
-
-  const maxPrice = Math.max(...allBuses.map(b => b.price), 99999);
-
-  const handleBookNow = (bus) => {
-    if (!requireAuth(navigate)) return;
-    navigate("/seatbook", { state: { busData: { ...bus, date } } });
-  };
-
-  const [selectedBoardingPoint, setSelectedBoardingPoint] = useState({});
-  const [selectedDroppingPoint, setSelectedDroppingPoint] = useState({});
-  const [timeFilterInfo, setTimeFilterInfo] = useState(null);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Search Bar */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-center">
-            {/* From */}
-            <div className="relative flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">FROM</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  onFocus={() => setShowFrom(true)}
-                  onBlur={() => setTimeout(() => setShowFrom(false), 200)}
-                  placeholder="Departure city"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
-                />
-                <FaMapMarkerAlt className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                {showFrom && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-50">
-                    {cities.filter(city => city.toLowerCase().includes(from.toLowerCase())).map((city) => (
-                      <div key={city} onClick={() => { setFrom(city); setShowFrom(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm">{city}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Swap */}
-            <button onClick={swapCities} className="p-2 text-[#d84e55] hover:bg-red-50 rounded-full transition mt-6 lg:mt-0">
-              <MdSwapHoriz size={24} />
-            </button>
-
-            {/* To */}
-            <div className="relative flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">TO</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  onFocus={() => setShowTo(true)}
-                  onBlur={() => setTimeout(() => setShowTo(false), 200)}
-                  placeholder="Destination city"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
-                />
-                <FaMapMarkerAlt className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                {showTo && (
-                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-50">
-                    {cities.filter(city => city.toLowerCase().includes(to.toLowerCase())).map((city) => (
-                      <div key={city} onClick={() => { setTo(city); setShowTo(false); }} className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm">{city}</div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Date */}
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1">DEPARTURE DATE</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                min={new Date().toISOString().split("T")[0]}
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
-              />
-            </div>
-
-            {/* Search Button */}
-            <button onClick={handleSearch} className="px-8 py-3 bg-[#d84e55] text-white rounded-lg hover:bg-red-600 transition font-semibold flex items-center gap-2 mt-6 lg:mt-0">
-              <FaSearch /> SEARCH
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex gap-6">
-          {/* Filters Sidebar */}
-          <div className="hidden lg:block w-80">
-            <div className="bg-white rounded-xl shadow-sm border p-6 sticky top-24">
-              <FilterContent
-                filters={filters}
-                setFilters={setFilters}
-                onClearAll={clearAllFilters}
-                availableBusesCount={filteredBuses.length}
-                maxPrice={maxPrice}
-              />
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="flex-1">
-            {/* Mobile Filter Toggle */}
-            <div className="lg:hidden mb-4">
-              <button onClick={() => setShowFilter(!showFilter)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg">
-                <FaSlidersH /> Filters {showFilter && <FaTimes />}
-              </button>
-              {showFilter && (
-                <div className="mt-4 bg-white rounded-xl shadow-sm border p-6">
-                  <FilterContent
-                    filters={filters}
-                    setFilters={setFilters}
-                    onClearAll={clearAllFilters}
-                    availableBusesCount={filteredBuses.length}
-                    maxPrice={maxPrice}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Results Header */}
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  {from} → {to}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {new Date(date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} • {filteredBuses.length} buses found
-                </p>
-              </div>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d84e55]">
-                <option value="">Sort by</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="departure">Departure Time</option>
-                <option value="rating">Rating</option>
-              </select>
-            </div>
-
-            {/* Time Filter Notification */}
-            {timeFilterInfo && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <p className="text-sm text-blue-700">
-                    <span className="font-semibold">Time Filter Active:</span> {timeFilterInfo.message}
-                  </p>
-                </div>
-                <p className="text-xs text-blue-600 mt-1 ml-4">
-                  Current time: {timeFilterInfo.currentTime} | Minimum departure: {timeFilterInfo.minimumTime}
-                </p>
-              </div>
-            )}
-
-            {/* Loading */}
-            {loading && (
-              <div className="text-center py-12">
-                <div className="inline-block w-8 h-8 border-4 border-[#d84e55] border-t-transparent rounded-full animate-spin"></div>
-                <p className="mt-4 text-gray-500">Searching for buses...</p>
-              </div>
-            )}
-
-            {/* No Results */}
-            {!loading && filteredBuses.length === 0 && (
-              <div className="text-center py-12">
-                <FaBus className="mx-auto text-6xl text-gray-300 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                  {timeFilterInfo ? "No buses available" : "No buses found"}
-                </h3>
-                <p className="text-gray-500">
-                  {timeFilterInfo 
-                    ? "All buses for today depart within the next hour. Try searching for tomorrow or adjust your travel time."
-                    : "Try adjusting your search criteria or filters"
-                  }
-                </p>
-                {timeFilterInfo && (
-                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg inline-block">
-                    <p className="text-sm text-yellow-700">
-                      🕰️ Buses must depart at least 1 hour from now ({timeFilterInfo.minimumTime})
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Bus Cards */}
-            <div className="space-y-4">
-              {filteredBuses.map((bus) => (
-                <div key={bus.id} className="bg-white rounded-xl shadow-sm border hover:shadow-md transition">
-                  <div className="p-6">
-                    {/* Bus Header */}
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-800">{bus.name}</h3>
-                        <p className="text-sm text-gray-500">{bus.type} • {bus.busNumber}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 mb-1">
-                          <span className="text-sm font-semibold text-gray-700">{bus.rating}</span>
-                          <span className="text-yellow-400">★</span>
-                        </div>
-                        <p className="text-xs text-gray-500">({Math.floor(Math.random() * 500) + 100} reviews)</p>
-                      </div>
-                    </div>
-
-                    {/* Route & Time */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-gray-800">{bus.departure}</p>
-                          <p className="text-xs text-gray-500">{from}</p>
-                        </div>
-                        <div className="flex-1 text-center">
-                          <p className="text-xs text-gray-500 mb-1">{formatDuration(bus.duration)}</p>
-                          <div className="h-px bg-gray-300 relative">
-                            <FaBus className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white text-[#d84e55] text-sm" />
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-bold text-gray-800">{bus.arrival}</p>
-                          <p className="text-xs text-gray-500">{to}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-[#d84e55]">₹{bus.price}</p>
-                        <p className="text-xs text-gray-500">{bus.totalSeats - (bus.bookedSeats?.length || 0)} seats available</p>
-                      </div>
-                    </div>
-
-                    {/* Amenities */}
-                    {bus.amenities && bus.amenities.length > 0 && (
-                      <div className="flex items-center gap-3 mb-4">
-                        <span className="text-xs font-semibold text-gray-500">AMENITIES:</span>
-                        <div className="flex gap-2">
-                          {bus.amenities.slice(0, 4).map((amenity, idx) => (
-                            <div key={idx} className="flex items-center gap-1 text-xs text-gray-600">
-                              {amenityIcon(amenity)}
-                              <span>{amenity}</span>
-                            </div>
-                          ))}
-                          {bus.amenities.length > 4 && <span className="text-xs text-gray-500">+{bus.amenities.length - 4} more</span>}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Boarding & Dropping Points */}
-                    {(bus.boarding?.length > 0 || bus.dropping?.length > 0) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        {bus.boarding?.length > 0 && (
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-2">BOARDING POINT</label>
-                            <select
-                              value={selectedBoardingPoint[bus.id] || ""}
-                              onChange={(e) => setSelectedBoardingPoint(prev => ({ ...prev, [bus.id]: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
-                            >
-                              <option value="">Select boarding point</option>
-                              {bus.boarding.map((point, idx) => (
-                                <option key={idx} value={point}>{point}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                        {bus.dropping?.length > 0 && (
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-2">DROPPING POINT</label>
-                            <select
-                              value={selectedDroppingPoint[bus.id] || ""}
-                              onChange={(e) => setSelectedDroppingPoint(prev => ({ ...prev, [bus.id]: e.target.value }))}
-                              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
-                            >
-                              <option value="">Select dropping point</option>
-                              {bus.dropping.map((point, idx) => (
-                                <option key={idx} value={point}>{point}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex justify-between items-center">
-                      <button
-                        onClick={() => setExpandedCard(expandedCard === bus.id ? null : bus.id)}
-                        className="flex items-center gap-2 text-[#d84e55] hover:text-red-600 transition text-sm font-semibold"
-                      >
-                        More Details {expandedCard === bus.id ? <FaChevronUp /> : <FaChevronDown />}
-                      </button>
-                      <button
-                        onClick={() => handleBookNow(bus)}
-                        className="px-6 py-2 bg-[#d84e55] text-white rounded-lg hover:bg-red-600 transition font-semibold"
-                      >
-                        Book Now
-                      </button>
-                    </div>
-
-                    {/* Expanded Details */}
-                    {expandedCard === bus.id && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <h4 className="font-semibold text-gray-700 mb-2">Bus Information</h4>
-                            <div className="space-y-1 text-gray-600">
-                              <p><span className="font-medium">Total Seats:</span> {bus.totalSeats}</p>
-                              <p><span className="font-medium">Available:</span> {bus.totalSeats - (bus.bookedSeats?.length || 0)}</p>
-                              <p><span className="font-medium">Bus Type:</span> {bus.originalType}</p>
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-gray-700 mb-2">Journey Details</h4>
-                            <div className="space-y-1 text-gray-600">
-                              <p><span className="font-medium">Duration:</span> {formatDuration(bus.duration)}</p>
-                              <p><span className="font-medium">Distance:</span> ~{Math.floor(Math.random() * 300) + 100} km</p>
-                              <p><span className="font-medium">Operator:</span> {bus.name}</p>
-                            </div>
-                          </div>
-                        </div>
-                        {bus.amenities && bus.amenities.length > 0 && (
-                          <div className="mt-4">
-                            <h4 className="font-semibold text-gray-700 mb-2">All Amenities</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {bus.amenities.map((amenity, idx) => (
-                                <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex items-center gap-1">
-                                  {amenityIcon(amenity)}
-                                  {amenity}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default SearchResult;rice), 0);
-        setFilters(prev => ({ ...prev, priceRange: { min: 0, max: maxP } }));
-        setAllBuses(formatted);
-        setFilteredBuses(formatted);
+        const maxP = Math.max(...timeFiltered.map((b) => b.price), 0);
+        setFilters((prev) => ({ ...prev, priceRange: { min: 0, max: maxP } }));
+        setAllBuses(timeFiltered);
+        setFilteredBuses(timeFiltered);
       } catch (err) {
-        console.error("API ERROR:", err);
-        setAllBuses([]);
-        setFilteredBuses([]);
+        console.error("Search buses error:", err?.response?.data || err.message);
+        setAllBuses([]); setFilteredBuses([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchBuses();
   }, [from, to]);
 
-  // Apply filters whenever filters or allBuses change
+  // Apply filters + sort
   useEffect(() => {
-    let filtered = [...allBuses];
-    
-    console.log("Applying filters:", filters);
-    console.log("Total buses before filter:", filtered.length);
+    let list = [...allBuses];
 
-    // Filter by bus type (case insensitive)
-    if (filters.busTypes.length > 0) {
-      filtered = filtered.filter(bus => {
-        const matches = filters.busTypes.some(type => 
-          bus.type.toLowerCase().includes(type.toLowerCase())
-        );
-        if (!matches) {
-          console.log(`Bus "${bus.name}" (${bus.type}) filtered out by bus type`);
-        }
-        return matches;
-      });
-      console.log(`After bus type filter: ${filtered.length} buses`);
-    }
+    if (filters.busTypes.length > 0)
+      list = list.filter((b) =>
+        filters.busTypes.some((t) => {
+          // Exact match: "AC" should NOT match "Non AC" or "AC Sleeper" unless explicitly selected
+          if (t === "AC") return b.type === "AC";
+          if (t === "Non AC") return b.type === "Non AC";
+          if (t === "Seater") return b.type === "Seater" || b.type === "AC Seater";
+          if (t === "Sleeper") return b.type === "Sleeper" || b.type === "AC Sleeper";
+          return b.type.toLowerCase().includes(t.toLowerCase());
+        })
+      );
 
-    // Filter by price range
-    filtered = filtered.filter(bus => {
-      const matches = bus.price <= filters.priceRange.max;
-      if (!matches) {
-        console.log(`Bus "${bus.name}" (₹${bus.price}) filtered out by price`);
-      }
-      return matches;
-    });
-    console.log(`After price filter: ${filtered.length} buses`);
+    list = list.filter((b) => b.price <= filters.priceRange.max);
 
-    // Filter by rating
-    if (filters.minRating > 0) {
-      filtered = filtered.filter(bus => {
-        const matches = bus.rating >= filters.minRating;
-        if (!matches) {
-          console.log(`Bus "${bus.name}" (${bus.rating}★) filtered out by rating`);
-        }
-        return matches;
-      });
-      console.log(`After rating filter: ${filtered.length} buses`);
-    }
+    if (filters.minRating > 0)
+      list = list.filter((b) => b.rating >= filters.minRating);
 
-    // Filter by departure time
     if (filters.departureTimes.length > 0) {
-      filtered = filtered.filter(bus => {
-        const departureHour = parseInt(bus.departure.split(":")[0]);
-        const isPM = bus.departure.includes("PM");
-        let hour = departureHour;
-        if (isPM && departureHour !== 12) hour += 12;
-        if (!isPM && departureHour === 12) hour = 0;
-
-        const matches = filters.departureTimes.some(timeRange => {
-          if (timeRange === "Before 10 AM") return hour < 10;
-          if (timeRange === "10 AM–5 PM") return hour >= 10 && hour < 17;
-          if (timeRange === "5 PM–11 PM") return hour >= 17 && hour < 23;
-          if (timeRange === "After 11 PM") return hour >= 23;
+      list = list.filter((b) => {
+        const h = getHour24(b.departure);
+        return filters.departureTimes.some((t) => {
+          if (t === "Before 10 AM")  return h < 10;
+          if (t === "10 AM–5 PM")    return h >= 10 && h < 17;
+          if (t === "5 PM–11 PM")    return h >= 17 && h < 23;
+          if (t === "After 11 PM")   return h >= 23;
           return false;
         });
-        
-        if (!matches) {
-          console.log(`Bus "${bus.name}" (${bus.departure}) filtered out by departure time`);
-        }
-        return matches;
-      });
-      console.log(`After departure time filter: ${filtered.length} buses`);
-    }
-
-    // Apply sorting
-    if (sortBy === "price_low") {
-      filtered.sort((a, b) => a.price - b.price);
-    } else if (sortBy === "price_high") {
-      filtered.sort((a, b) => b.price - a.price);
-    } else if (sortBy === "rating") {
-      filtered.sort((a, b) => b.rating - a.rating);
-    } else if (sortBy === "departure") {
-      filtered.sort((a, b) => {
-        const getHour = (time) => {
-          let hour = parseInt(time.split(":")[0]);
-          const isPM = time.includes("PM");
-          if (isPM && hour !== 12) hour += 12;
-          if (!isPM && hour === 12) hour = 0;
-          return hour;
-        };
-        return getHour(a.departure) - getHour(b.departure);
       });
     }
 
-    console.log("Final filtered buses:", filtered.length);
-    setFilteredBuses(filtered);
+    if (sortBy === "price_low")  list.sort((a, b) => a.price - b.price);
+    if (sortBy === "price_high") list.sort((a, b) => b.price - a.price);
+    if (sortBy === "rating")     list.sort((a, b) => b.rating - a.rating);
+    if (sortBy === "departure")  list.sort((a, b) => getHour24(a.departure) - getHour24(b.departure));
+
+    setFilteredBuses(list);
   }, [allBuses, filters, sortBy]);
 
-  const maxPrice = allBuses.length > 0 ? Math.max(...allBuses.map(b => b.price)) : 99999;
+  const maxPrice = allBuses.length > 0 ? Math.max(...allBuses.map((b) => b.price)) : 5000;
 
   const handleClearAllFilters = () => {
-    setFilters({
-      busTypes: [],
-      departureTimes: [],
-      priceRange: { min: 0, max: maxPrice },
-      minRating: 0
-    });
+    setFilters({ busTypes: [], departureTimes: [], priceRange: { min: 0, max: maxPrice }, minRating: 0 });
     setSortBy("");
   };
 
-  const filterCities = (val) =>
-    cities.filter((c) => c.toLowerCase().includes(val.toLowerCase()));
-
-  const handleSwap = () => {
-    setFrom(to);
-    setTo(from);
+  const handleSearch = () => {
+    if (!from || !to) { alert("Please enter both cities"); return; }
+    // Use setSearchParams so the URL updates and the sync useEffect fires
+    navigate(`/s-to-d?from=${encodeURIComponent(from.trim())}&to=${encodeURIComponent(to.trim())}&date=${date}`);
   };
 
-  const handleSearch = () => {
-    if (!from || !to) {
-      alert("Please enter both cities");
-      return;
-    }
-    navigate(`/s-to-d?from=${from}&to=${to}&date=${date}`);
+  // Bug 4: refresh clears all fields and results
+  const handleRefresh = () => {
+    setFrom(""); setTo(""); setDate("");
+    setAllBuses([]); setFilteredBuses([]);
+    setSortBy("");
+    setFilters({ busTypes: [], departureTimes: [], priceRange: { min: 0, max: 5000 }, minRating: 0 });
   };
 
   return (
-    <div className="bg-[#f5f5f5] min-h-screen font-sans">
-      {/* TOP SEARCH BAR - Same as before */}
-      <div className="w-full flex justify-center py-6 px-4 bg-white shadow-sm">
-        <div className="bg-gray-200 rounded-[30px] sm:rounded-[40px] px-4 sm:px-6 py-5 w-full max-w-6xl shadow-md">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-4">
-            <span>BUSES</span>
-            <span className="text-gray-700 text-xs sm:text-sm">INDIA'S FASTEST BOOKING PLATFORM</span>
-          </div>
+    <div ref={topRef} className="bg-[#f5f5f5] min-h-screen font-sans">
 
-          <div className="border-t border-gray-300 mb-4" />
+      {/* Bug 1: SearchBar at very top */}
+      <SearchBar
+        from={from} setFrom={setFrom}
+        to={to}     setTo={setTo}
+        date={date} setDate={setDate}
+        onSearch={handleSearch}
+        onRefresh={handleRefresh}
+      />
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center bg-gray-100 rounded-2xl sm:rounded-full overflow-visible relative">
-            {/* FROM */}
-            <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
-              <FaMapMarkerAlt className="text-orange-500 shrink-0" />
-              <div className="w-full">
-                <p className="text-xs text-gray-500 font-semibold">FROM</p>
-                <input
-                  type="text"
-                  value={from}
-                  placeholder="Enter city"
-                  onChange={(e) => {
-                    setFrom(e.target.value);
-                    setShowFrom(true);
-                  }}
-                  onFocus={() => setShowFrom(true)}
-                  className="bg-transparent outline-none w-full font-semibold text-lg"
-                />
-                {showFrom && from && (
-                  <div className="absolute top-16 left-0 w-full bg-white shadow rounded z-10 max-h-40 overflow-y-auto">
-                    {filterCities(from).map((city, i) => (
-                      <div
-                        key={i}
-                        onClick={() => {
-                          setFrom(city);
-                          setShowFrom(false);
-                        }}
-                        className="p-2 hover:bg-gray-200 cursor-pointer text-sm"
-                      >
-                        {city}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* SWAP */}
-            <div className="hidden sm:flex items-center justify-center">
-              <button onClick={handleSwap} className="bg-white p-2 rounded-full shadow">
-                <MdSwapHoriz className="text-orange-500 text-xl" />
-              </button>
-            </div>
-
-            {/* TO */}
-            <div className="relative flex items-center gap-3 px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
-              <FaMapMarkerAlt className="text-orange-500 shrink-0" />
-              <div className="w-full">
-                <p className="text-xs text-gray-500 font-semibold">TO</p>
-                <input
-                  type="text"
-                  value={to}
-                  placeholder="Enter city"
-                  onChange={(e) => {
-                    setTo(e.target.value);
-                    setShowTo(true);
-                  }}
-                  onFocus={() => setShowTo(true)}
-                  className="bg-transparent outline-none w-full font-semibold text-lg"
-                />
-                {showTo && to && (
-                  <div className="absolute top-16 left-0 w-full bg-white shadow rounded z-10 max-h-40 overflow-y-auto">
-                    {filterCities(to).map((city, i) => (
-                      <div
-                        key={i}
-                        onClick={() => {
-                          setTo(city);
-                          setShowTo(false);
-                        }}
-                        className="p-2 hover:bg-gray-200 cursor-pointer text-sm"
-                      >
-                        {city}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* DATE */}
-            <div className="px-5 py-4 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
-              <p className="text-xs text-gray-500 font-semibold">DEPARTURE</p>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="bg-transparent outline-none font-semibold text-lg"
-              />
-            </div>
-
-            {/* SEARCH BTN */}
-            <div className="px-4 py-3 sm:py-0">
-              <button
-                onClick={handleSearch}
-                className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full flex items-center justify-center gap-2 font-bold text-lg"
-              >
-                <FaSearch /> SEARCH
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* MOBILE FILTER DRAWER */}
+      {/* Mobile filter drawer */}
       {showFilter && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowFilter(false)} />
@@ -983,9 +246,8 @@ export default SearchResult;rice), 0);
                 <FaTimes className="text-xl" />
               </button>
             </div>
-            <FilterContent
-              filters={filters}
-              setFilters={setFilters}
+            <SearchFilters
+              filters={filters} setFilters={setFilters}
               onClearAll={handleClearAllFilters}
               availableBusesCount={filteredBuses.length}
               maxPrice={maxPrice}
@@ -994,14 +256,12 @@ export default SearchResult;rice), 0);
         </div>
       )}
 
-      {/* MAIN SECTION */}
       <div className="max-w-7xl mx-auto mt-6 px-4 pb-10 flex gap-6">
-        {/* LEFT FILTER — desktop only */}
+        {/* Desktop filter sidebar */}
         <div className="hidden lg:block w-[280px] shrink-0">
           <div className="bg-white rounded-2xl shadow-sm p-5 sticky top-4">
-            <FilterContent
-              filters={filters}
-              setFilters={setFilters}
+            <SearchFilters
+              filters={filters} setFilters={setFilters}
               onClearAll={handleClearAllFilters}
               availableBusesCount={filteredBuses.length}
               maxPrice={maxPrice}
@@ -1009,9 +269,8 @@ export default SearchResult;rice), 0);
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
         <div className="flex-1 min-w-0">
-          {/* SORT BAR */}
+          {/* Sort bar — Bug 8: hide sort when no results */}
           <div className="bg-white px-4 py-3 rounded-xl shadow-sm flex flex-wrap justify-between items-center gap-2 mb-4">
             <button
               onClick={() => setShowFilter(true)}
@@ -1019,8 +278,9 @@ export default SearchResult;rice), 0);
             >
               <FaSlidersH /> Filters ({filteredBuses.length})
             </button>
-            
-            <div className="flex flex-wrap gap-3 text-sm font-medium text-gray-500">
+
+            {/* Bug 8: only show sort dropdown when there are results */}
+            {filteredBuses.length > 0 && (
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -1032,152 +292,102 @@ export default SearchResult;rice), 0);
                 <option value="rating">Rating: High to Low</option>
                 <option value="departure">Departure: Earliest</option>
               </select>
-            </div>
-            
+            )}
+
             <p className="text-[#d84e55] text-sm font-semibold">
-              {filteredBuses.length} buses found • {from} → {to}
+              {filteredBuses.length} buses found{from && to ? ` • ${from} → ${to}` : ""}
+              {/* Bug 9: show formatted date */}
+              {date ? ` • ${formatDate(date)}` : ""}
             </p>
           </div>
 
-          {/* LOADING */}
+          {/* Time filter notice ─ today only */}
+          {date === new Date().toISOString().split("T")[0] && (
+            <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2 text-sm text-blue-700">
+              <span className="font-semibold">⏰ Time Filter Active:</span>
+              Showing buses departing from <span className="font-bold mx-1">{getMinDepartureLabel()}</span> onwards (1 hour from now)
+            </div>
+          )}
+
+          {/* Loading animation */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
-              {/* Road */}
               <div className="relative w-full max-w-lg h-32 overflow-hidden">
-                {/* Sky */}
                 <div className="absolute inset-0 bg-gradient-to-b from-blue-100 to-blue-50 rounded-2xl" />
-
-                {/* Sun */}
                 <div className="absolute top-4 right-10 w-10 h-10 bg-yellow-300 rounded-full shadow-lg shadow-yellow-200" />
-
-                {/* Clouds */}
                 <div className="absolute top-5 left-8 flex gap-1 animate-[cloudMove_4s_linear_infinite]">
                   <div className="w-8 h-4 bg-white rounded-full opacity-80" />
                   <div className="w-12 h-5 bg-white rounded-full opacity-80 -ml-3" />
-                  <div className="w-6 h-3 bg-white rounded-full opacity-80 -ml-2" />
                 </div>
-                <div className="absolute top-3 left-48 flex gap-1 animate-[cloudMove_6s_linear_infinite]">
-                  <div className="w-6 h-3 bg-white rounded-full opacity-60" />
-                  <div className="w-10 h-4 bg-white rounded-full opacity-60 -ml-2" />
-                </div>
-
-                {/* Road */}
                 <div className="absolute bottom-0 left-0 right-0 h-10 bg-gray-700 rounded-b-2xl" />
-
-                {/* Road dashes */}
                 <div className="absolute bottom-4 left-0 right-0 flex gap-4 animate-[roadDash_0.5s_linear_infinite]">
                   {Array.from({ length: 12 }).map((_, i) => (
                     <div key={i} className="w-10 h-1.5 bg-yellow-400 rounded-full shrink-0" />
                   ))}
                 </div>
-
-                {/* Bus */}
-                <div className="absolute bottom-6 animate-[busRide_2s_ease-in-out_infinite]" style={{ left: '10%' }}>
-                  {/* Bus body */}
-                  <div className="relative">
-                    <div className="w-20 h-10 bg-orange-500 rounded-lg shadow-lg shadow-orange-300 relative">
-                      {/* Windows */}
-                      <div className="absolute top-2 left-2 flex gap-1.5">
-                        <div className="w-3 h-3 bg-sky-200 rounded-sm opacity-90" />
-                        <div className="w-3 h-3 bg-sky-200 rounded-sm opacity-90" />
-                        <div className="w-3 h-3 bg-sky-200 rounded-sm opacity-90" />
-                        <div className="w-3 h-3 bg-sky-200 rounded-sm opacity-90" />
-                      </div>
-                      {/* Front */}
-                      <div className="absolute right-0 top-0 w-5 h-full bg-orange-600 rounded-r-lg flex items-center justify-center">
-                        <div className="w-3 h-2 bg-yellow-300 rounded-sm" />
-                      </div>
-                      {/* Stripe */}
-                      <div className="absolute bottom-0 left-0 right-0 h-2 bg-orange-600 rounded-b-lg" />
+                <div className="absolute bottom-6 animate-[busRide_2s_ease-in-out_infinite]" style={{ left: "10%" }}>
+                  <div className="w-20 h-10 bg-orange-500 rounded-lg shadow-lg shadow-orange-300 relative">
+                    <div className="absolute top-2 left-2 flex gap-1.5">
+                      {[0,1,2,3].map((i) => <div key={i} className="w-3 h-3 bg-sky-200 rounded-sm opacity-90" />)}
                     </div>
-                    {/* Wheels */}
-                    <div className="flex justify-between px-2 -mt-1">
-                      <div className="w-4 h-4 bg-gray-800 rounded-full border-2 border-gray-600 animate-[spin_0.4s_linear_infinite]">
+                    <div className="absolute right-0 top-0 w-5 h-full bg-orange-600 rounded-r-lg flex items-center justify-center">
+                      <div className="w-3 h-2 bg-yellow-300 rounded-sm" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between px-2 -mt-1">
+                    {[0,1].map((i) => (
+                      <div key={i} className="w-4 h-4 bg-gray-800 rounded-full border-2 border-gray-600 animate-[spin_0.4s_linear_infinite]">
                         <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mx-auto mt-0.5" />
                       </div>
-                      <div className="w-4 h-4 bg-gray-800 rounded-full border-2 border-gray-600 animate-[spin_0.4s_linear_infinite]">
-                        <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mx-auto mt-0.5" />
-                      </div>
-                    </div>
-                    {/* Exhaust */}
-                    <div className="absolute -left-3 top-2 flex gap-0.5">
-                      <div className="w-1 h-1 bg-gray-400 rounded-full opacity-60 animate-[puff_1s_ease-out_infinite]" />
-                      <div className="w-1.5 h-1.5 bg-gray-300 rounded-full opacity-40 animate-[puff_1s_ease-out_infinite_0.3s]" />
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              {/* Text */}
               <p className="mt-6 text-gray-600 font-semibold text-base">
                 Finding buses for <span className="text-orange-500 font-bold">{from} → {to}</span>
               </p>
               <p className="text-gray-400 text-sm mt-1">Hang tight, we're on the road! 🚌</p>
-
               <style>{`
-                @keyframes busRide {
-                  0%, 100% { transform: translateY(0px); }
-                  25% { transform: translateY(-3px); }
-                  75% { transform: translateY(-1px); }
-                }
-                @keyframes cloudMove {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(500px); }
-                }
-                @keyframes roadDash {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(-56px); }
-                }
-                @keyframes puff {
-                  0% { transform: scale(1) translateX(0); opacity: 0.6; }
-                  100% { transform: scale(2.5) translateX(-8px); opacity: 0; }
-                }
+                @keyframes busRide { 0%,100%{transform:translateY(0)} 25%{transform:translateY(-3px)} 75%{transform:translateY(-1px)} }
+                @keyframes cloudMove { 0%{transform:translateX(0)} 100%{transform:translateX(500px)} }
+                @keyframes roadDash { 0%{transform:translateX(0)} 100%{transform:translateX(-56px)} }
               `}</style>
             </div>
           )}
 
-          {/* NO DATA */}
+          {/* Bug 7: centered empty state with proper spacing */}
           {!loading && filteredBuses.length === 0 && allBuses.length > 0 && (
-            <div className="text-center mt-10">
-              <p className="text-red-500 text-lg">No buses match your filters</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-red-500 text-lg font-semibold">No buses match your filters</p>
               <p className="text-gray-500 text-sm mt-2">Try adjusting your filter criteria</p>
-              <button
-                onClick={handleClearAllFilters}
-                className="mt-4 text-[#d84e55] hover:underline"
-              >
+              <button onClick={handleClearAllFilters} className="mt-4 text-[#d84e55] hover:underline text-sm font-semibold">
                 Clear all filters
               </button>
             </div>
           )}
 
-          {!loading && allBuses.length === 0 && (
-            <div className="text-center mt-10">
-              <p className="text-red-500 text-lg">No buses found for this route</p>
-              <p className="text-gray-500 text-sm mt-2">Try searching for different cities</p>
+          {!loading && allBuses.length === 0 && !!(from && to) && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-red-500 text-lg font-semibold">No buses found for this route</p>
+              <p className="text-gray-500 text-sm mt-2">
+                No buses available for <span className="font-semibold">{from} → {to}</span>.
+                Try a different route.
+              </p>
             </div>
           )}
 
-          {/* BUS CARDS */}
+          {/* Bus cards */}
           {filteredBuses.map((bus) => (
-            <div
-              key={bus.id}
-              className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden border border-gray-100 hover:shadow-md transition-shadow duration-300"
-            >
-              {/* MAIN ROW */}
+            <div key={bus.id} className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden border border-gray-100 hover:shadow-md transition-shadow duration-300">
               <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between gap-4">
-                {/* LEFT */}
+                {/* Left */}
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <FaBus className="text-orange-500" />
                     <h3 className="font-bold text-lg text-gray-800">{bus.name}</h3>
-                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">
-                      {bus.type}
-                    </span>
-                    <span className="bg-green-500 text-white px-1.5 py-0.5 rounded text-xs font-bold">
-                      {bus.rating}★
-                    </span>
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">{bus.type}</span>
+                    <span className="bg-green-500 text-white px-1.5 py-0.5 rounded text-xs font-bold">{bus.rating}★</span>
                   </div>
-
                   <div className="flex items-center gap-2 mt-3">
                     <div className="text-center">
                       <p className="text-xl font-bold text-gray-800">{bus.departure}</p>
@@ -1192,9 +402,12 @@ export default SearchResult;rice), 0);
                       <p className="text-xs text-gray-500">{to}</p>
                     </div>
                   </div>
+                  <p className="text-xs text-green-600 font-semibold mt-2">
+                    💺 {bus.availableSeats} seats available
+                  </p>
                 </div>
 
-                {/* RIGHT */}
+                {/* Right */}
                 <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 sm:min-w-[140px]">
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-800">₹{bus.price}</p>
@@ -1205,29 +418,25 @@ export default SearchResult;rice), 0);
                       onClick={() => setExpandedCard(expandedCard === bus.id ? null : bus.id)}
                       className="flex items-center justify-center gap-2 border border-[#d84e55] text-[#d84e55] hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-semibold transition"
                     >
-                      More Details
-                      {expandedCard === bus.id ? (
-                        <FaChevronUp className="text-xs" />
-                      ) : (
-                        <FaChevronDown className="text-xs" />
-                      )}
+                      More Details {expandedCard === bus.id ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
                     </button>
                     <button
-                      onClick={() => navigate("/seatbook", { state: { busData: {
-                        _id: bus.id,
-                        busName: bus.name,
-                        busNumber: bus.busNumber || "",
-                        busType: bus.type,
-                        from,
-                        to,
-                        date,
-                        departureTime: bus.departure,
-                        arrivalTime: bus.arrival,
-                        duration: bus.duration,
-                        price: bus.price,
-                        totalSeats: bus.totalSeats || 40,
-                        seats: bus.seats || 40,
-                      }}})}
+                      onClick={() => {
+                        const token = localStorage.getItem("token");
+                        if (!token) {
+                          alert("Please login or register to book a ticket.");
+                          navigate("/register");
+                          return;
+                        }
+                        navigate("/seatbook", { state: { busData: {
+                          _id: bus.id, busName: bus.name, busNumber: bus.busNumber,
+                          busType: bus.type, from, to, date,
+                          departureTime: bus.departure, arrivalTime: bus.arrival,
+                          duration: bus.duration, price: bus.price,
+                          totalSeats: bus.totalSeats, seats: bus.seats,
+                          boardingPoints: bus.boarding, droppingPoints: bus.dropping,
+                        }}});
+                      }}
                       className="bg-[#d84e55] hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
                     >
                       Book Now
@@ -1236,10 +445,9 @@ export default SearchResult;rice), 0);
                 </div>
               </div>
 
-              {/* EXPANDED DETAILS */}
+              {/* Expanded details */}
               {expandedCard === bus.id && (
                 <div className="border-t border-gray-100 bg-gray-50 px-4 sm:px-5 py-5">
-                  {/* TRAVEL DURATION BAR */}
                   <div className="flex items-center gap-4 mb-6 bg-white rounded-xl px-4 sm:px-5 py-4 shadow-sm">
                     <div className="text-center">
                       <p className="text-lg font-bold text-gray-800">{bus.departure}</p>
@@ -1261,42 +469,32 @@ export default SearchResult;rice), 0);
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    {/* AMENITIES */}
                     <div>
                       <h4 className="text-sm font-bold text-gray-700 mb-3">Amenities</h4>
                       <div className="flex flex-wrap gap-2">
                         {bus.amenities.map((a, i) => (
-                          <span
-                            key={i}
-                            className="flex items-center gap-1 bg-white border border-gray-200 text-gray-600 text-xs px-3 py-1.5 rounded-full shadow-sm"
-                          >
+                          <span key={i} className="flex items-center gap-1 bg-white border border-gray-200 text-gray-600 text-xs px-3 py-1.5 rounded-full shadow-sm">
                             {amenityIcon(a)} {a}
                           </span>
                         ))}
                       </div>
                     </div>
-
-                    {/* BOARDING */}
                     <div>
                       <h4 className="text-sm font-bold text-gray-700 mb-3">Boarding Points</h4>
                       <div className="space-y-2">
                         {bus.boarding.map((b, i) => (
                           <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                            <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                            {b}
+                            <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />{b}
                           </div>
                         ))}
                       </div>
                     </div>
-
-                    {/* DROPPING */}
                     <div>
                       <h4 className="text-sm font-bold text-gray-700 mb-3">Dropping Points</h4>
                       <div className="space-y-2">
                         {bus.dropping.map((d, i) => (
                           <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                            <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
-                            {d}
+                            <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />{d}
                           </div>
                         ))}
                       </div>

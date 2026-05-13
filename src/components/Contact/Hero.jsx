@@ -1,30 +1,33 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { Mail, Phone, MapPin, Send, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import API from '../../config/api';
 
 const Hero = () => {
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        message: ''
-    });
-
+    const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: '', message: '' });
     const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-       
-        console.log('Form submitted:', formData);
-        setSubmitted(true);
-        setFormData({ name: '', email: '', message: '' });
-        setTimeout(() => setSubmitted(false), 3000);
+        setError('');
+        setLoading(true);
+        try {
+            await axios.post(`${API}/api/contact`, formData);
+            setSubmitted(true);
+            setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+            setTimeout(() => setSubmitted(false), 4000);
+        } catch {
+            setError('Failed to send message. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const contactInfo = [
@@ -173,72 +176,57 @@ const Hero = () => {
                                         ✓ Thank you! Your message has been sent successfully.
                                     </div>
                                 )}
+                                {error && (
+                                    <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                                        {error}
+                                    </div>
+                                )}
 
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     {/* Name Field */}
                                     <div>
-                                        <label htmlFor="name" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">
-                                            Name
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="name"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleInputChange}
-                                            placeholder="Your Full Name"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400"
-                                            required
-                                        />
+                                        <label htmlFor="name" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">Name</label>
+                                        <input type="text" id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="Your Full Name"
+                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400" required />
                                     </div>
 
-                                    {/* Email Field */}
+                                    {/* Email + Phone row */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label htmlFor="email" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">Email Address</label>
+                                            <input type="email" id="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="your@email.com"
+                                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400" required />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="phone" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">Phone Number</label>
+                                            <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="+91 XXXXX XXXXX"
+                                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400" />
+                                        </div>
+                                    </div>
+
+                                    {/* Subject */}
                                     <div>
-                                        <label htmlFor="email" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">
-                                            Email Address
-                                        </label>
-                                        <input
-                                            type="email"
-                                            id="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleInputChange}
-                                            placeholder="your@email.com"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400"
-                                            required
-                                        />
+                                        <label htmlFor="subject" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">Subject</label>
+                                        <input type="text" id="subject" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="How can we help?"
+                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400" required />
                                     </div>
 
-                                    {/* Message Field */}
+                                    {/* Message */}
                                     <div>
-                                        <label htmlFor="message" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">
-                                            Message
-                                        </label>
-                                        <textarea
-                                            id="message"
-                                            name="message"
-                                            value={formData.message}
-                                            onChange={handleInputChange}
-                                            placeholder="Tell us how we can help..."
-                                            rows="5"
-                                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400 resize-none"
-                                            required
-                                        ></textarea>
+                                        <label htmlFor="message" className="block text-gray-700 font-semibold mb-2 text-sm md:text-base">Message</label>
+                                        <textarea id="message" name="message" value={formData.message} onChange={handleInputChange} placeholder="Tell us how we can help..."
+                                            rows="5" className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-orange-500 transition-colors text-gray-700 placeholder-gray-400 resize-none" required />
                                     </div>
 
-                                    {/* Privacy Notice */}
                                     <p className="text-xs md:text-sm text-gray-500">
                                         By submitting, you agree to the processing of your personal data as described in our{' '}
                                         <a href="#" className="text-orange-500 hover:underline">Privacy Statement</a>.
                                     </p>
 
-                                    {/* Submit Button */}
-                                    <button
-                                        type="submit"
-                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 md:py-4 rounded-full transition-all duration-300 shadow-lg active:scale-95 transform hover:scale-105 flex items-center justify-center gap-2 text-base md:text-lg"
-                                    >
+                                    <button type="submit" disabled={loading}
+                                        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 md:py-4 rounded-full transition-all duration-300 shadow-lg active:scale-95 transform hover:scale-105 flex items-center justify-center gap-2 text-base md:text-lg">
                                         <Send className="w-5 h-5" />
-                                        Send Message
+                                        {loading ? 'Sending...' : 'Send Message'}
                                     </button>
                                 </form>
                             </div>

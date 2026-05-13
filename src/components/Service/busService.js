@@ -1,9 +1,10 @@
 import axios from "axios";
+import API from "../config/api";
 
-const API = `${import.meta.env.VITE_API_BASE_URL}/api/buses`;
+const BASE = `${API}/api/buses`;
 
 export const searchBuses = async (criteria) => {
-  const res = await axios.get(`${API}/search-buses`, {
+  const res = await axios.get(`${BASE}/search-buses`, {
     params: {
       origin: criteria.origin,
       destination: criteria.destination,

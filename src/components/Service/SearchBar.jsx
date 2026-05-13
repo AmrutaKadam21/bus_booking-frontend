@@ -1,109 +1,129 @@
-import React from "react";
-import { FaMapMarkerAlt, FaSearch } from "react-icons/fa";
+import React, { useState } from "react";
+import { FaMapMarkerAlt, FaSearch, FaSyncAlt } from "react-icons/fa";
 import { MdSwapHoriz } from "react-icons/md";
+import useCities from "../../hooks/useCities";
 
-const cities = [
-  "Mumbai", "Pune", "Nashik", "Nagpur", "Kolhapur",
-  "Aurangabad", "Solapur", "Satara", "Ahmednagar",
-  "Delhi", "Bangalore", "Hyderabad", "Chennai",
-];
+// Get today in LOCAL timezone (not UTC) — prevents IST offset giving yesterday
+const getToday = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const dd   = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+const today = getToday();
 
-const SearchBar = ({
-  from, setFrom, to, setTo, date, setDate,
-  showFrom, setShowFrom, showTo, setShowTo,
-  onSearch, onSwapCities
-}) => {
+export const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${d} ${months[parseInt(m, 10) - 1]} ${y}`;
+};
+
+const CityDropdown = ({ label, value, setValue, show, setShow, setOtherShow, cities }) => {
+  const filtered = value
+    ? cities.filter((c) => c.toLowerCase().includes(value.toLowerCase()))
+    : cities;
+
   return (
-    <div className="bg-white shadow-sm border-b sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="flex flex-col lg:flex-row gap-4 items-center">
-          {/* From */}
-          <div className="relative flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">FROM</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                onFocus={() => setShowFrom(true)}
-                onBlur={() => setTimeout(() => setShowFrom(false), 200)}
-                placeholder="Departure city"
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
-              />
-              <FaMapMarkerAlt className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              {showFrom && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-50">
-                  {cities.filter(city => city.toLowerCase().includes(from.toLowerCase())).map((city) => (
-                    <div 
-                      key={city} 
-                      onClick={() => { setFrom(city); setShowFrom(false); }} 
-                      className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm"
-                    >
-                      {city}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+    <div className="relative flex items-center gap-3 px-5 py-3 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300">
+      <FaMapMarkerAlt className="text-orange-500 shrink-0" />
+      <div className="w-full">
+        <p className="text-xs text-gray-500 font-semibold">{label}</p>
+        <input
+          type="text"
+          value={value}
+          placeholder="Enter city"
+          onChange={(e) => { setValue(e.target.value); setShow(true); setOtherShow(false); }}
+          onFocus={() => { setShow(true); setOtherShow(false); }}
+          onBlur={() => setTimeout(() => setShow(false), 150)}
+          className="bg-transparent outline-none w-full font-semibold text-base"
+        />
+        {show && filtered.length > 0 && (
+          <div className="absolute top-full left-0 w-full bg-white shadow-lg rounded-lg z-50 max-h-48 overflow-y-auto border border-gray-100 mt-1">
+            {filtered.map((city, i) => (
+              <div
+                key={i}
+                onMouseDown={() => { setValue(city); setShow(false); }}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm text-gray-700"
+              >
+                <FaMapMarkerAlt className="text-orange-400 text-xs shrink-0" />
+                {city}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const SearchBar = ({ from, setFrom, to, setTo, date, setDate, onSearch, onRefresh }) => {
+  const cities = useCities();
+  const [showFrom, setShowFrom] = useState(false);
+  const [showTo, setShowTo] = useState(false);
+
+  const handleSwap = () => { setFrom(to); setTo(from); };
+
+  const handleSearchClick = () => {
+    if (!from.trim()) { alert("Please enter the departure city (From)"); return; }
+    if (!to.trim())   { alert("Please enter the destination city (To)"); return; }
+    if (!date)        { alert("Please select a departure date"); return; }
+    onSearch();
+  };
+
+  return (
+    <div className="w-full flex justify-center py-4 px-4 bg-white shadow-sm">
+      <div className="bg-gray-200 rounded-[30px] sm:rounded-[40px] px-4 sm:px-6 py-4 w-full max-w-6xl shadow-md">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm font-semibold px-2 mb-3">
+          <span>BUSES</span>
+          <span className="text-gray-700 text-xs sm:text-sm">INDIA'S FASTEST BOOKING PLATFORM</span>
+        </div>
+
+        <div className="border-t border-gray-300 mb-3" />
+
+        <div className="flex flex-col sm:flex-row items-stretch bg-gray-100 rounded-2xl sm:rounded-full overflow-visible relative">
+
+          <CityDropdown label="FROM" value={from} setValue={setFrom} show={showFrom} setShow={setShowFrom} setOtherShow={setShowTo} cities={cities} />
+
+          <div className="hidden sm:flex items-center justify-center px-1">
+            <button onClick={handleSwap} className="bg-white p-2 rounded-full shadow hover:shadow-md transition">
+              <MdSwapHoriz className="text-orange-500 text-xl" />
+            </button>
           </div>
 
-          {/* Swap */}
-          <button 
-            onClick={onSwapCities} 
-            className="p-2 text-[#d84e55] hover:bg-red-50 rounded-full transition mt-6 lg:mt-0"
-          >
-            <MdSwapHoriz size={24} />
-          </button>
+          <CityDropdown label="TO" value={to} setValue={setTo} show={showTo} setShow={setShowTo} setOtherShow={setShowFrom} cities={cities} />
 
-          {/* To */}
-          <div className="relative flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">TO</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                onFocus={() => setShowTo(true)}
-                onBlur={() => setTimeout(() => setShowTo(false), 200)}
-                placeholder="Destination city"
-                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
-              />
-              <FaMapMarkerAlt className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              {showTo && (
-                <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto z-50">
-                  {cities.filter(city => city.toLowerCase().includes(to.toLowerCase())).map((city) => (
-                    <div 
-                      key={city} 
-                      onClick={() => { setTo(city); setShowTo(false); }} 
-                      className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm"
-                    >
-                      {city}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Date */}
-          <div className="flex-1">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">DEPARTURE DATE</label>
+          {/* Date — always visible, min=today (local timezone), past dates blocked */}
+          <div className="px-5 py-3 sm:w-1/4 border-b sm:border-b-0 sm:border-r border-gray-300 flex flex-col justify-center">
+            <p className="text-xs text-gray-500 font-semibold">DEPARTURE <span className="text-red-400">*</span></p>
             <input
               type="date"
+              min={today}
               value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55] focus:border-transparent"
+              onChange={(e) => {
+                if (e.target.value && e.target.value < today) return;
+                setDate(e.target.value);
+              }}
+              className="bg-transparent outline-none font-semibold text-base text-gray-800 cursor-pointer w-full"
             />
           </div>
 
-          {/* Search Button */}
-          <button 
-            onClick={onSearch} 
-            className="px-8 py-3 bg-[#d84e55] text-white rounded-lg hover:bg-red-600 transition font-semibold flex items-center gap-2 mt-6 lg:mt-0"
-          >
-            <FaSearch /> SEARCH
-          </button>
+          <div className="flex items-stretch gap-2 px-3 py-2 sm:py-0">
+            <button
+              onClick={onRefresh}
+              title="Clear / Refresh"
+              className="self-stretch sm:my-2 bg-gray-300 hover:bg-gray-400 text-gray-700 px-3 rounded-full flex items-center justify-center transition"
+            >
+              <FaSyncAlt className="text-sm" />
+            </button>
+            <button
+              onClick={handleSearchClick}
+              className="self-stretch sm:my-2 bg-red-600 hover:bg-red-700 text-white px-6 rounded-full flex items-center justify-center gap-2 font-bold text-sm transition"
+            >
+              <FaSearch /> SEARCH
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { FaSearch, FaBus, FaWheelchair } from "react-icons/fa";
+import API from "../../config/api";
 
 const HANDICAP_SEATS = ["3", "4", "7", "8"];
 const TODAY = new Date().toISOString().split("T")[0];
@@ -19,11 +20,11 @@ export default function SeatManagement() {
     setBus(null);
     setSeats([]);
     try {
-      const busRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/by-number/${busNumber}`);
+      const busRes = await axios.get(`${API}/api/buses/by-number/${busNumber}`);
       if (!busRes.data || busRes.data.message) { alert("Bus not found"); return; }
       const busData = busRes.data;
       setBus(busData);
-      const seatRes = await axios.get(`https://bus-booking-backend-rk6y.onrender.com/api/buses/seat-status/${busData._id}?date=${date}`);
+      const seatRes = await axios.get(`${API}/api/buses/seat-status/${busData._id}?date=${date}`);
       const { totalSeats, bookedSeats } = seatRes.data;
       const total = totalSeats || busData.seats || 40;
       setSeats(Array.from({ length: total }, (_, i) => {

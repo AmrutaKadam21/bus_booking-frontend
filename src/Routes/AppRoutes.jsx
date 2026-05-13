@@ -1,4 +1,5 @@
 import React from 'react'
+import ProtectedRoute from "../components/ProtectedRoute";
 import Home from "../pages/Home"
 import About from "../pages/About"
 import Contact from "../pages/Contact"
@@ -21,16 +22,64 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/About" element={<About />} />
-        <Route path="/s-to-d" element={<Busdetails />} />        <Route path="/Contact" element={<Contact />} />
+        <Route path="/s-to-d" element={<Busdetails />} />      
+          <Route path="/Contact" element={<Contact />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/Service" element={<Service />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/bookings" element={<Bookings />} />
-        <Route path="/tickets" element={<Tickets />} />
-        <Route path="/cancellations" element={<Cancellations />} />
-        <Route path="/livetracking" element={<LiveTracking />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+       <Route
+  path="/dashboard"
+  element={
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/bookings"
+  element={
+    <ProtectedRoute>
+      <Bookings />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/tickets"
+  element={
+    <ProtectedRoute>
+      <Tickets />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/cancellations"
+  element={
+    <ProtectedRoute>
+      <Cancellations />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/livetracking"
+  element={
+    <ProtectedRoute>
+      <LiveTracking />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin-dashboard"
+  element={
+    <ProtectedRoute adminOnly={true}>
+      <AdminDashboard />
+    </ProtectedRoute>
+  }
+/>
         <Route path="/seatbook" element={<SeatBook />} />
       </Routes>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import API from "../../config/api";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ const Register = () => {
     setLoading(true);
     setError("");
     try {
-      const res = await axios.post("https://bus-booking-backend-rk6y.onrender.com/api/auth/register", form);
+      const res = await axios.post(`${API}/api/auth/register`, form);
 
       // Clear any existing auth data and redirect to login
       localStorage.removeItem("token");

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import bgImage from "../../assets/Images/bg3.png";
 import axios from "axios";
+import API from "../../config/api";
 
 export default function AddBus() {
 
@@ -33,7 +34,7 @@ export default function AddBus() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("https://bus-booking-backend-rk6y.onrender.com/api/buses/add", {
+      await axios.post(`${API}/api/buses/add`, {
         ...form,
         price:              Number(form.price),
         seats:              Number(form.seats),
@@ -70,7 +71,7 @@ export default function AddBus() {
     formData.append("file", file);
 
     try {
-      await axios.post("https://bus-booking-backend-rk6y.onrender.com/api/buses/upload-csv", formData, {
+      await axios.post(`${API}/api/buses/upload-csv`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       alert("CSV Uploaded Successfully ");
