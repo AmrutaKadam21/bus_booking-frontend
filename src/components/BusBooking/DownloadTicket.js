@@ -1,4 +1,4 @@
-import { formatDuration } from "../utils/timeUtils";
+import { formatDuration } from "../../utils/timeUtils";
 
 const downloadTicket = ({ bookingId, busData, selectedSeats, passengerForm, paymentMethod, totalPrice }) => {
   // selectedSeats is now array of { id, seatNumber, deckType, seatType }
