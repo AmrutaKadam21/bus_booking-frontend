@@ -7,6 +7,7 @@ import {
 import { MdPayment, MdQrCodeScanner } from "react-icons/md";
 import { getSeatStatusWithGender } from "../../utils/genderSeatUtils";
 
+
 /* ── Enhanced Berth cell with gender compatibility ── */
 const BerthSeat = ({ seat, price, onClick, userGender, allSeats, busType, onBlocked }) => {
   const s = getSeatStatusWithGender(seat, userGender, allSeats, busType);

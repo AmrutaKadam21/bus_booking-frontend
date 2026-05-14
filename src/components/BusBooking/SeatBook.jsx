@@ -31,6 +31,7 @@ const SeatBook = () => {
   const [loading, setLoading]               = useState(false);
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingId, setBookingId]           = useState("");
+  const [genderViolation, setGenderViolation] = useState("");
 
   const [passengerForm, setPassengerForm] = useState({
     name: "", email: "", phone: "", age: "", gender: "",
@@ -121,8 +122,39 @@ const SeatBook = () => {
 
   const handlePassengerChange = (e) => setPassengerForm({ ...passengerForm, [e.target.name]: e.target.value });
 
+  // Check if any selected seat violates gender rule (male near female)
+  const checkGenderViolation = (seatList, gender) => {
+    if (!hasDecks) return null;
+    for (const seat of seatList) {
+      const seatNum = parseInt(seat.seatNumber);
+      const pairNum = seatNum % 2 === 1 ? seatNum + 1 : seatNum - 1;
+      const pairSeat = seats.find(s => s.seatNumber === String(pairNum));
+      if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "female" && gender === "male") {
+        return `Seat ${seat.seatNumber} is adjacent to a female passenger's berth. Male passengers cannot book seats next to female passengers.`;
+      }
+      if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "male" && gender === "female") {
+        return `Seat ${seat.seatNumber} is adjacent to a male passenger's berth. Female passengers cannot book seats next to male passengers.`;
+      }
+    }
+    return null;
+  };
+
   const handleSeatClick = (seat) => {
     if (seat.status === "booked") return;
+    // Strict gender check — block click entirely if violation
+    if (hasDecks && passengerForm.gender) {
+      const seatNum = parseInt(seat.seatNumber);
+      const pairNum = seatNum % 2 === 1 ? seatNum + 1 : seatNum - 1;
+      const pairSeat = seats.find(s => s.seatNumber === String(pairNum));
+      if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "female" && passengerForm.gender === "male") {
+        setGenderViolation(`🚫 Seat ${seat.seatNumber} is reserved for female passengers only.\nThe adjacent berth is already booked by a female passenger.\nMale passengers cannot book this seat.`);
+        return;
+      }
+      if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "male" && passengerForm.gender === "female") {
+        setGenderViolation(`🚫 Seat ${seat.seatNumber} cannot be booked.\nThe adjacent berth is occupied by a male passenger.`);
+        return;
+      }
+    }
     const updateList = (list) => list.map(s => s.id === seat.id ? { ...s, status: s.status === "selected" ? "available" : "selected" } : s);
     setSeats(prev => updateList(prev));
     if (hasDecks) {
@@ -137,6 +169,9 @@ const SeatBook = () => {
 
   const proceedToPassengerDetails = () => {
     if (selectedSeats.length === 0) { alert("Please select at least one seat"); return; }
+    // Hard block: re-check gender violation before proceeding
+    const violation = checkGenderViolation(selectedSeats, passengerForm.gender);
+    if (violation) { setGenderViolation(violation); return; }
     if (busData.boardingPoints?.length > 0 && !selectedBoardingPoint) {
       alert("Please select a boarding point"); return;
     }
@@ -285,6 +320,26 @@ const SeatBook = () => {
 
         </div>
       </div>
+
+      {/* Gender violation popup — hard blocks male near female */}
+      {genderViolation && (
+        <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}}>
+          <div style={{background:"#fff",borderRadius:"1.25rem",padding:"2rem",maxWidth:"380px",width:"90%",boxShadow:"0 24px 60px rgba(0,0,0,0.3)",textAlign:"center"}}>
+            <div style={{width:"70px",height:"70px",borderRadius:"50%",background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 1rem",fontSize:"2.2rem"}}>
+              🚫
+            </div>
+            <h3 style={{fontSize:"1.15rem",fontWeight:800,color:"#1f2937",marginBottom:"0.75rem"}}>Seat Not Allowed</h3>
+            <p style={{fontSize:"0.875rem",color:"#6b7280",lineHeight:1.7,marginBottom:"1.5rem",whiteSpace:"pre-line"}}>{genderViolation}</p>
+            <div style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:"0.75rem",padding:"0.75rem",marginBottom:"1.5rem",fontSize:"0.8rem",color:"#92400e"}}>
+              👩 Only female passengers can book seats adjacent to female berths
+            </div>
+            <button
+              onClick={() => setGenderViolation("")}
+              style={{background:"#d84e55",color:"#fff",border:"none",borderRadius:"0.75rem",padding:"0.75rem 2rem",fontWeight:700,fontSize:"1rem",cursor:"pointer",width:"100%"}}
+            >OK, Understood</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
