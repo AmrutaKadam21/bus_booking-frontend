@@ -14,11 +14,19 @@ const SeatBook = () => {
   const location = useLocation();
 
   const busData = location.state?.busData || {
-    busName: "Express Luxury", busNumber: "EX-101",
-    from: "Mumbai", to: "Pune",
+    busName: "Express Luxury",
+    busNumber: "EX-101",
+    busType: "AC Sleeper",
+    from: "Mumbai",
+    to: "Pune",
     date: new Date().toISOString().split("T")[0],
-    departureTime: "08:00 AM", arrivalTime: "12:00 PM",
-    price: 700, totalSeats: 40, _id: "65f7c8d9e1a2b3c4d5e6f7g8",
+    departureTime: "08:00 AM",
+    arrivalTime: "12:00 PM",
+    price: 700,
+    totalSeats: 40,
+    _id: "65f7c8d9e1a2b3c4d5e6f7g8",
+    boardingPoints: ["Swargate", "Shivajinagar"],
+    droppingPoints: ["Pune Station", "Magarpatta"],
   };
 
   const [seats, setSeats]                   = useState([]);
