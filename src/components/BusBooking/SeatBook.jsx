@@ -122,13 +122,28 @@ const SeatBook = () => {
 
   const handlePassengerChange = (e) => setPassengerForm({ ...passengerForm, [e.target.name]: e.target.value });
 
+  const findAdjacentSleeperSeat = (seat) => {
+    if (!seat || !seats?.length) return null;
+    const deckSeats = seats.filter((s) => s.deckType === seat.deckType);
+    const index = deckSeats.findIndex((s) => s.seatNumber === seat.seatNumber);
+    if (index === -1) return null;
+
+    const rowSize = 3;
+    const rowIndex = Math.floor(index / rowSize);
+    const row = deckSeats.slice(rowIndex * rowSize, rowIndex * rowSize + rowSize);
+    if (row.length < 3) return null;
+
+    const position = index % rowSize;
+    if (position === 1) return row[2];
+    if (position === 2) return row[1];
+    return null;
+  };
+
   // Check if any selected seat violates gender rule (male near female)
   const checkGenderViolation = (seatList, gender) => {
     if (!hasDecks) return null;
     for (const seat of seatList) {
-      const seatNum = parseInt(seat.seatNumber);
-      const pairNum = seatNum % 2 === 1 ? seatNum + 1 : seatNum - 1;
-      const pairSeat = seats.find(s => s.seatNumber === String(pairNum));
+      const pairSeat = findAdjacentSleeperSeat(seat);
       if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "female" && gender === "male") {
         return `Seat ${seat.seatNumber} is adjacent to a female passenger's berth. Male passengers cannot book seats next to female passengers.`;
       }
@@ -143,9 +158,7 @@ const SeatBook = () => {
     if (seat.status === "booked") return;
     // Strict gender check — block click entirely if violation
     if (hasDecks && passengerForm.gender) {
-      const seatNum = parseInt(seat.seatNumber);
-      const pairNum = seatNum % 2 === 1 ? seatNum + 1 : seatNum - 1;
-      const pairSeat = seats.find(s => s.seatNumber === String(pairNum));
+      const pairSeat = findAdjacentSleeperSeat(seat);
       if (pairSeat?.status === "booked" && pairSeat?.bookedByGender === "female" && passengerForm.gender === "male") {
         setGenderViolation(`🚫 Seat ${seat.seatNumber} is reserved for female passengers only.\nThe adjacent berth is already booked by a female passenger.\nMale passengers cannot book this seat.`);
         return;

@@ -4,6 +4,24 @@ export const getGenderIcon = (gender) => {
   return '👤';
 };
 
+const findAdjacentSleeperSeat = (seat, allSeats) => {
+  if (!seat || !allSeats?.length) return null;
+  const deckSeats = allSeats.filter((s) => s.deckType === seat.deckType);
+  const index = deckSeats.findIndex((s) => s.seatNumber === seat.seatNumber);
+  if (index === -1) return null;
+
+  const rowSize = 3;
+  const rowIndex = Math.floor(index / rowSize);
+  const rowStart = rowIndex * rowSize;
+  const row = deckSeats.slice(rowStart, rowStart + rowSize);
+  if (row.length < 3) return null;
+
+  const position = index % rowSize;
+  if (position === 1) return row[2];
+  if (position === 2) return row[1];
+  return null;
+};
+
 export const getSeatStatusWithGender = (seat, userGender, allSeats, busType) => {
   const isSleeper = busType && busType.toLowerCase().includes('sleeper');
 
@@ -23,10 +41,7 @@ export const getSeatStatusWithGender = (seat, userGender, allSeats, busType) => 
     };
   }
 
-  // Find adjacent berth (odd↔even pairs: 1-2, 3-4, 5-6 ...)
-  const seatNum = parseInt(seat.seatNumber);
-  const pairNum = seatNum % 2 === 1 ? seatNum + 1 : seatNum - 1;
-  const pairSeat = allSeats.find(s => s.seatNumber === String(pairNum));
+  const pairSeat = findAdjacentSleeperSeat(seat, allSeats);
   const pairGender = pairSeat?.bookedByGender || null;
   const pairBooked = pairSeat?.status === 'booked';
 

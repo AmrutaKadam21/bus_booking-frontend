@@ -15,6 +15,7 @@ import Cancellations from "../components/UserProfilePage/Cancellations";
 import LiveTracking from "../components/UserProfilePage/LiveTracking";
 import AdminDashboard from '../components/AdminProfile/AdminDashboard'
 import SeatBook from '../components/BusBooking/SeatBook'
+import { Navigate } from 'react-router-dom'
 
 const AppRoutes = () => {
   return (
@@ -81,6 +82,7 @@ const AppRoutes = () => {
   }
 />
         <Route path="/seatbook" element={<SeatBook />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   )

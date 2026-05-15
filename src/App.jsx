@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Header from "./components/Layout/Header";
 import Footer from "./components/Layout/Footer";
 import AppRoutes from "./Routes/AppRoutes";
+import ErrorBoundary from "./components/ErrorBoundary";
 import SplashScreen from "./components/Layout/SplashScreen";
 
 const NO_FOOTER_ROUTES = [
@@ -43,7 +44,9 @@ function App() {
         visibility: splashDone ? "visible" : "hidden",
       }}>
         <Header />
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
         {showFooter && <Footer />}
       </div>
     </>
