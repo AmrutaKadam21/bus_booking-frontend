@@ -36,8 +36,8 @@ const SeatBook = () => {
   const [passengerForm, setPassengerForm] = useState({
     name: "", email: "", phone: "", age: "", gender: "",
   });
-  const [selectedBoardingPoint, setSelectedBoardingPoint] = useState(null);
-  const [selectedDroppingPoint, setSelectedDroppingPoint] = useState(null);
+  const [selectedBoardingPoint, setSelectedBoardingPoint] = useState("");
+  const [selectedDroppingPoint, setSelectedDroppingPoint] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [paymentDetails, setPaymentDetails] = useState({
@@ -185,17 +185,17 @@ const SeatBook = () => {
     // Hard block: re-check gender violation before proceeding
     const violation = checkGenderViolation(selectedSeats, passengerForm.gender);
     if (violation) { setGenderViolation(violation); return; }
+    setBookingStep(2);
+  };
+
+  const proceedToPayment = () => {
+    if (!passengerForm.name || !passengerForm.email || !passengerForm.phone) { alert("Please fill all passenger details"); return; }
     if (busData.boardingPoints?.length > 0 && !selectedBoardingPoint) {
       alert("Please select a boarding point"); return;
     }
     if (busData.droppingPoints?.length > 0 && !selectedDroppingPoint) {
       alert("Please select a dropping point"); return;
     }
-    setBookingStep(2);
-  };
-
-  const proceedToPayment = () => {
-    if (!passengerForm.name || !passengerForm.email || !passengerForm.phone) { alert("Please fill all passenger details"); return; }
     setBookingStep(3);
   };
 

@@ -355,19 +355,22 @@ const BookingSteps = ({
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Boarding Point <span className="text-red-500">*</span></label>
                     <select
-                      value={selectedBoardingPoint?.name || ""}
+                      value={selectedBoardingPoint || ""}
                       onChange={(e) => {
-                        const point = busData.boardingPoints.find(p => p.name === e.target.value);
-                        setSelectedBoardingPoint(point);
+                        setSelectedBoardingPoint(e.target.value);
                       }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
                     >
                       <option value="">Select boarding point</option>
-                      {busData.boardingPoints.map((point, idx) => (
-                        <option key={idx} value={point.name || point}>
-                          {typeof point === 'string' ? point : `${point.name} - ${point.time}`}
-                        </option>
-                      ))}
+                      {busData.boardingPoints.map((point, idx) => {
+                        const optionValue = typeof point === 'string' ? point : point.name || JSON.stringify(point);
+                        const optionLabel = typeof point === 'string' ? point : point.time ? `${point.name} - ${point.time}` : (point.name || JSON.stringify(point));
+                        return (
+                          <option key={idx} value={optionValue}>
+                            {optionLabel}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}
@@ -375,19 +378,22 @@ const BookingSteps = ({
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Dropping Point <span className="text-red-500">*</span></label>
                     <select
-                      value={selectedDroppingPoint?.name || ""}
+                      value={selectedDroppingPoint || ""}
                       onChange={(e) => {
-                        const point = busData.droppingPoints.find(p => p.name === e.target.value);
-                        setSelectedDroppingPoint(point);
+                        setSelectedDroppingPoint(e.target.value);
                       }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#d84e55]"
                     >
                       <option value="">Select dropping point</option>
-                      {busData.droppingPoints.map((point, idx) => (
-                        <option key={idx} value={point.name || point}>
-                          {typeof point === 'string' ? point : `${point.name} - ${point.time}`}
-                        </option>
-                      ))}
+                      {busData.droppingPoints.map((point, idx) => {
+                        const optionValue = typeof point === 'string' ? point : point.name || JSON.stringify(point);
+                        const optionLabel = typeof point === 'string' ? point : point.time ? `${point.name} - ${point.time}` : (point.name || JSON.stringify(point));
+                        return (
+                          <option key={idx} value={optionValue}>
+                            {optionLabel}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}
