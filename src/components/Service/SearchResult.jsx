@@ -129,6 +129,18 @@ const SearchResult = () => {
         if (raw.length === 0) {
           setAllBuses([]); setFilteredBuses([]); return;
         }
+        const normalizePoint = (point) => {
+          if (!point) return "";
+          if (typeof point === "string") return point;
+          if (typeof point === "object") {
+            if (point.name && point.time) return `${point.name} - ${point.time}`;
+            if (point.name) return point.name;
+            if (point.address) return point.address;
+            return JSON.stringify(point);
+          }
+          return String(point);
+        };
+
         const formatted = raw.map((bus) => ({
           id:         bus._id,
           name:       bus.busName,
@@ -140,8 +152,8 @@ const SearchResult = () => {
           arrival:    bus.arrivalTime   || "",
           duration:   fmtDuration(bus.travelDurationMins),
           amenities:  bus.amenities      || [],
-          boarding:   bus.boardingPoints || [],
-          dropping:   bus.droppingPoints || [],
+          boarding:   (bus.boardingPoints || []).map(normalizePoint),
+          dropping:   (bus.droppingPoints || []).map(normalizePoint),
           seats:      bus.seats || 40,
           totalSeats: bus.seats || 40,
           availableSeats: bus.availableSeats ?? (bus.seats || 40),
